@@ -1,7 +1,7 @@
 .PHONY: build run generate clean dev lint test
 
-GO := /usr/local/go/bin/go
-GOLANGCI_LINT := $(shell go env GOPATH)/bin/golangci-lint
+GO ?= go
+GOLANGCI_LINT ?= golangci-lint
 
 build: generate
 	$(GO) build -o bin/server ./cmd/server
