@@ -1,43 +1,62 @@
 package templates
 
-import "youtube-deck-go/internal/youtube"
+import (
+	"net/url"
+
+	"youtube-deck-go/internal/youtube"
+)
 
 templ SearchModal() {
-	<div class="fixed inset-0 bg-black/70 flex items-start justify-center pt-20 z-50" id="search-modal">
-		<div class="bg-gray-800 rounded-lg w-full max-w-lg mx-4 border border-gray-700">
-			<div class="p-4 border-b border-gray-700 flex justify-between items-center">
-				<h2 class="text-lg font-semibold">Add Subscription</h2>
+	<div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center pt-[10vh] z-50" id="search-modal" onclick="if(event.target === this) document.getElementById('modal').innerHTML=''">
+		<div class="bg-zinc-900 rounded-2xl w-full max-w-xl mx-4 border border-zinc-800 shadow-2xl">
+			<div class="p-5 border-b border-zinc-800 flex justify-between items-center">
+				<h2 class="text-lg font-semibold text-zinc-100">Add Channel</h2>
 				<button
 					hx-get="/search/close"
 					hx-target="#modal"
 					hx-swap="innerHTML"
-					class="text-gray-400 hover:text-gray-200"
+					class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
 				>
-					✕
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+					</svg>
 				</button>
 			</div>
-			<div class="p-4">
-				<input
-					type="text"
-					name="q"
-					placeholder="Search YouTube channels or playlists..."
-					hx-get="/search/results"
-					hx-trigger="input changed delay:300ms"
-					hx-target="#search-results"
-					hx-include="[name='type']"
-					class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-red-500"
-				/>
-				<div class="mt-2 text-sm text-gray-400">
-					<label class="inline-flex items-center mr-4">
-						<input type="radio" name="type" value="channel" checked class="mr-1" hx-get="/search/results" hx-include="[name='q']" hx-trigger="change" hx-target="#search-results"/>
-						Channels
+			<div class="p-5">
+				<div class="relative">
+					<svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+					</svg>
+					<input
+						type="text"
+						name="q"
+						placeholder="Search YouTube channels..."
+						autofocus
+						hx-get="/search/results"
+						hx-trigger="input changed delay:300ms"
+						hx-target="#search-results"
+						hx-include="[name='type']"
+						hx-indicator="#search-indicator"
+						class="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
+					/>
+					<div id="search-indicator" class="htmx-indicator absolute right-4 top-1/2 -translate-y-1/2">
+						<svg class="w-5 h-5 text-red-500 spinner" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
+						</svg>
+					</div>
+				</div>
+				<div class="flex gap-4 mt-4">
+					<label class="flex items-center gap-2 cursor-pointer">
+						<input type="radio" name="type" value="channel" checked class="w-4 h-4 text-red-600 bg-zinc-800 border-zinc-600 focus:ring-red-500 focus:ring-offset-zinc-900" hx-get="/search/results" hx-include="[name='q']" hx-trigger="change" hx-target="#search-results"/>
+						<span class="text-sm text-zinc-300">Channels</span>
 					</label>
-					<label class="inline-flex items-center">
-						<input type="radio" name="type" value="playlist" class="mr-1" hx-get="/search/results" hx-include="[name='q']" hx-trigger="change" hx-target="#search-results"/>
-						Playlists
+					<label class="flex items-center gap-2 cursor-pointer">
+						<input type="radio" name="type" value="playlist" class="w-4 h-4 text-red-600 bg-zinc-800 border-zinc-600 focus:ring-red-500 focus:ring-offset-zinc-900" hx-get="/search/results" hx-include="[name='q']" hx-trigger="change" hx-target="#search-results"/>
+						<span class="text-sm text-zinc-300">Playlists</span>
 					</label>
 				</div>
-				<div id="search-results" class="mt-4 max-h-80 overflow-y-auto"></div>
+				<div id="search-results" class="mt-4 max-h-[50vh] overflow-y-auto"></div>
 			</div>
 		</div>
 	</div>
@@ -45,8 +64,11 @@ templ SearchModal() {
 
 templ SearchResults(results []youtube.SearchResult) {
 	if len(results) == 0 {
-		<div class="text-center py-4 text-gray-400">
-			No results found
+		<div class="flex flex-col items-center justify-center py-8 text-zinc-500">
+			<svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+			</svg>
+			<p>No results found</p>
 		</div>
 	} else {
 		<div class="space-y-2">
@@ -58,27 +80,34 @@ templ SearchResults(results []youtube.SearchResult) {
 }
 
 templ SearchError(msg string) {
-	<div class="text-center py-4 text-red-400">
-		Error: { msg }
+	<div class="flex flex-col items-center justify-center py-8 text-red-400">
+		<svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+		</svg>
+		<p class="text-sm">{ msg }</p>
 	</div>
 }
 
 templ SearchResultItem(r youtube.SearchResult) {
-	<div class="flex items-center gap-3 p-2 rounded hover:bg-gray-700">
+	<div class="flex items-center gap-4 p-3 rounded-xl hover:bg-zinc-800 transition-colors group">
 		if r.ThumbnailURL != "" {
-			<img src={ r.ThumbnailURL } alt={ r.Title } class="w-12 h-12 rounded object-cover"/>
+			<img src={ searchProxyURL(r.ThumbnailURL) } alt={ r.Title } class="w-14 h-14 rounded-lg object-cover bg-zinc-800"/>
 		} else {
-			<div class="w-12 h-12 bg-gray-600 rounded flex items-center justify-center">
+			<div class="w-14 h-14 bg-zinc-800 rounded-lg flex items-center justify-center">
 				if r.Type == "channel" {
-					<span>📺</span>
+					<svg class="w-6 h-6 text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+					</svg>
 				} else {
-					<span>📋</span>
+					<svg class="w-6 h-6 text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/>
+					</svg>
 				}
 			</div>
 		}
 		<div class="flex-1 min-w-0">
-			<div class="font-medium truncate">{ r.Title }</div>
-			<div class="text-sm text-gray-400">{ r.Type }</div>
+			<div class="font-medium text-zinc-100 truncate">{ r.Title }</div>
+			<div class="text-sm text-zinc-500 capitalize">{ r.Type }</div>
 		</div>
 		<button
 			hx-post="/subscriptions"
@@ -86,9 +115,12 @@ templ SearchResultItem(r youtube.SearchResult) {
 			hx-target="#subscriptions"
 			hx-swap="beforeend"
 			hx-on::after-request="document.getElementById('modal').innerHTML=''"
-			class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm shrink-0"
+			class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
 		>
-			Subscribe
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+			</svg>
+			Add
 		</button>
 	</div>
 }
@@ -115,4 +147,8 @@ func escapeJSON(s string) string {
 		}
 	}
 	return result
+}
+
+func searchProxyURL(imgURL string) string {
+	return "/proxy/image?url=" + url.QueryEscape(imgURL)
 }

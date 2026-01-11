@@ -9,3 +9,7 @@ server
 
 # Generated
 *_templ.go
+token.json
+
+# Data
+cache/

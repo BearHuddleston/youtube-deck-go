@@ -13,57 +13,107 @@ templ LayoutWithAuth(title string, isAuthenticated bool) {
 			<title>{ title } | YouTube Deck</title>
 			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 			<script src="https://cdn.tailwindcss.com"></script>
+			<style>
+				.htmx-request .htmx-indicator { display: inline-flex !important; }
+				.htmx-indicator { display: none; }
+				@keyframes spin { to { transform: rotate(360deg); } }
+				.spinner { animation: spin 1s linear infinite; }
+				.htmx-request.htmx-indicator { display: inline-flex !important; }
+			</style>
 		</head>
-		<body class="bg-gray-900 text-gray-100 min-h-screen">
-			<nav class="bg-gray-800 border-b border-gray-700 px-4 py-3">
-				<div class="max-w-6xl mx-auto flex items-center justify-between">
-					<a href="/" class="text-xl font-bold text-red-500">YouTube Deck</a>
-					<div class="flex items-center gap-2">
-						if isAuthenticated {
+		<body class="bg-zinc-950 text-zinc-100 min-h-screen" hx-indicator=".global-indicator">
+			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div class="flex items-center justify-between h-16">
+						<a href="/" class="flex items-center gap-3">
+							<svg class="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.6c-1 .3-1.7 1.1-2 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 1.9.5 9.5.5 9.5.5s7.6 0 9.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.7zM9.5 15.5v-7l6.4 3.5-6.4 3.5z"/>
+							</svg>
+							<span class="text-xl font-bold bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">YouTube Deck</span>
+						</a>
+						<div class="flex items-center gap-3">
+							<div class="htmx-indicator global-indicator">
+								<svg class="w-5 h-5 text-red-500 spinner" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
+								</svg>
+							</div>
+							if isAuthenticated {
+								<button
+									hx-post="/import"
+									hx-target="#subscriptions"
+									hx-swap="innerHTML"
+									hx-indicator="#import-indicator"
+									class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+								>
+									<span id="import-indicator" class="htmx-indicator">
+										<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
+										</svg>
+									</span>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+									</svg>
+									Import
+								</button>
+								<a
+									href="/auth/logout"
+									class="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+									</svg>
+									Logout
+								</a>
+							} else {
+								<a
+									href="/auth/login"
+									class="inline-flex items-center gap-2 bg-white text-zinc-900 hover:bg-zinc-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+								>
+									<svg class="w-4 h-4" viewBox="0 0 24 24">
+										<path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+										<path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+										<path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+										<path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+									</svg>
+									Sign in with Google
+								</a>
+							}
 							<button
-								hx-post="/import"
-								hx-target="#subscriptions"
+								hx-get="/search"
+								hx-target="#modal"
 								hx-swap="innerHTML"
-								class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-medium"
+								class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
 							>
-								Import Subscriptions
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+								</svg>
+								Add Channel
 							</button>
-							<a
-								href="/auth/logout"
-								class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm font-medium"
-							>
-								Logout
-							</a>
-						} else {
-							<a
-								href="/auth/login"
-								class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium"
-							>
-								Login with Google
-							</a>
-						}
-						<button
-							hx-get="/search"
-							hx-target="#modal"
-							hx-swap="innerHTML"
-							class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-medium"
-						>
-							+ Add Subscription
-						</button>
+						</div>
 					</div>
 				</div>
 			</nav>
-			<main class="max-w-6xl mx-auto p-4">
+			<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				{ children... }
 			</main>
 			<div id="modal"></div>
-			<div id="toast" class="fixed bottom-4 right-4 hidden bg-green-600 text-white px-4 py-2 rounded shadow-lg"></div>
+			<div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-zinc-800 text-white px-6 py-4 rounded-xl shadow-2xl border border-zinc-700 flex items-center gap-3 z-50">
+				<svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+				</svg>
+				<span id="toast-message"></span>
+			</div>
 			<script>
 				document.body.addEventListener('showToast', function(e) {
 					const toast = document.getElementById('toast');
-					toast.textContent = e.detail.value;
-					toast.classList.remove('hidden');
-					setTimeout(() => toast.classList.add('hidden'), 3000);
+					const message = document.getElementById('toast-message');
+					message.textContent = e.detail.value;
+					toast.classList.remove('translate-y-20', 'opacity-0');
+					setTimeout(() => {
+						toast.classList.add('translate-y-20', 'opacity-0');
+					}, 4000);
 				});
 			</script>
 		</body>

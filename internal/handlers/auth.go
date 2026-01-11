@@ -99,10 +99,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 		for _, item := range resp.Items {
 			channelID := item.Snippet.ResourceId.ChannelId
 			title := item.Snippet.Title
-			thumbnail := ""
-			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Default != nil {
-				thumbnail = item.Snippet.Thumbnails.Default.Url
-			}
+			thumbnail := getBestThumbnail(item.Snippet.Thumbnails)
 
 			_, err := h.queries.CreateSubscription(ctx, db.CreateSubscriptionParams{
 				Name:         title,
@@ -144,6 +141,22 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 func (h *AuthHandlers) IsAuthenticated() bool {
 	return h.auth.IsAuthenticated()
+}
+
+func getBestThumbnail(t *youtube.ThumbnailDetails) string {
+	if t == nil {
+		return ""
+	}
+	if t.Medium != nil {
+		return t.Medium.Url
+	}
+	if t.High != nil {
+		return t.High.Url
+	}
+	if t.Default != nil {
+		return t.Default.Url
+	}
+	return ""
 }
 
 func itoa(n int) string {

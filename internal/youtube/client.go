@@ -53,7 +53,7 @@ func (c *Client) SearchChannels(ctx context.Context, query string, maxResults in
 		results = append(results, SearchResult{
 			ID:           item.Snippet.ChannelId,
 			Title:        item.Snippet.Title,
-			ThumbnailURL: item.Snippet.Thumbnails.Default.Url,
+			ThumbnailURL: getBestThumbnail(item.Snippet.Thumbnails),
 			Type:         "channel",
 		})
 	}
@@ -76,7 +76,7 @@ func (c *Client) SearchPlaylists(ctx context.Context, query string, maxResults i
 		results = append(results, SearchResult{
 			ID:           item.Id.PlaylistId,
 			Title:        item.Snippet.Title,
-			ThumbnailURL: item.Snippet.Thumbnails.Default.Url,
+			ThumbnailURL: getBestThumbnail(item.Snippet.Thumbnails),
 			Type:         "playlist",
 		})
 	}
@@ -129,17 +129,29 @@ func (c *Client) FetchPlaylistVideos(ctx context.Context, playlistID string, max
 	videos := make([]VideoInfo, 0, len(videoResp.Items))
 	for _, v := range videoResp.Items {
 		publishedAt, _ := time.Parse(time.RFC3339, v.Snippet.PublishedAt)
-		thumbnailURL := ""
-		if v.Snippet.Thumbnails != nil && v.Snippet.Thumbnails.Medium != nil {
-			thumbnailURL = v.Snippet.Thumbnails.Medium.Url
-		}
 		videos = append(videos, VideoInfo{
 			ID:           v.Id,
 			Title:        v.Snippet.Title,
-			ThumbnailURL: thumbnailURL,
+			ThumbnailURL: getBestThumbnail(v.Snippet.Thumbnails),
 			Duration:     v.ContentDetails.Duration,
 			PublishedAt:  publishedAt,
 		})
 	}
 	return videos, nil
+}
+
+func getBestThumbnail(t *youtube.ThumbnailDetails) string {
+	if t == nil {
+		return ""
+	}
+	if t.Medium != nil {
+		return t.Medium.Url
+	}
+	if t.High != nil {
+		return t.High.Url
+	}
+	if t.Default != nil {
+		return t.Default.Url
+	}
+	return ""
 }
