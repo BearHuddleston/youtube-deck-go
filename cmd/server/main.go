@@ -46,7 +46,7 @@ func main() {
 	}
 
 	for _, stmt := range migrations {
-		database.Exec(stmt)
+		_, _ = database.Exec(stmt)
 	}
 
 	queries := db.New(database)
@@ -62,7 +62,7 @@ func main() {
 		if err != nil {
 			log.Printf("Warning: failed to init OAuth: %v", err)
 		} else {
-			authMgr.LoadToken("token.json")
+			_ = authMgr.LoadToken("token.json")
 			log.Printf("OAuth enabled")
 		}
 	} else {

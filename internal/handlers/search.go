@@ -7,13 +7,13 @@ import (
 )
 
 func (h *Handlers) HandleSearch(w http.ResponseWriter, r *http.Request) {
-	templates.SearchModal().Render(r.Context(), w)
+	_ = templates.SearchModal().Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleSearchResults(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		w.Write([]byte(""))
+		_, _ = w.Write([]byte(""))
 		return
 	}
 
@@ -25,20 +25,20 @@ func (h *Handlers) HandleSearchResults(w http.ResponseWriter, r *http.Request) {
 	if searchType == "channel" {
 		results, err := h.yt.SearchChannels(r.Context(), query, 10)
 		if err != nil {
-			templates.SearchError(err.Error()).Render(r.Context(), w)
+			_ = templates.SearchError(err.Error()).Render(r.Context(), w)
 			return
 		}
-		templates.SearchResults(results).Render(r.Context(), w)
+		_ = templates.SearchResults(results).Render(r.Context(), w)
 	} else {
 		results, err := h.yt.SearchPlaylists(r.Context(), query, 10)
 		if err != nil {
-			templates.SearchError(err.Error()).Render(r.Context(), w)
+			_ = templates.SearchError(err.Error()).Render(r.Context(), w)
 			return
 		}
-		templates.SearchResults(results).Render(r.Context(), w)
+		_ = templates.SearchResults(results).Render(r.Context(), w)
 	}
 }
 
 func (h *Handlers) HandleSearchClose(w http.ResponseWriter, r *http.Request) {
-	templates.SearchClose().Render(r.Context(), w)
+	_ = templates.SearchClose().Render(r.Context(), w)
 }

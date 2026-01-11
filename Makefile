@@ -1,6 +1,7 @@
-.PHONY: build run generate clean dev
+.PHONY: build run generate clean dev lint test
 
 GO := /usr/local/go/bin/go
+GOLANGCI_LINT := $(shell go env GOPATH)/bin/golangci-lint
 
 build: generate
 	$(GO) build -o bin/server ./cmd/server
@@ -29,3 +30,9 @@ tidy:
 check:
 	$(GO) vet ./...
 	$(GO) build ./...
+
+lint:
+	$(GOLANGCI_LINT) run
+
+test:
+	$(GO) test ./...

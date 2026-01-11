@@ -27,7 +27,7 @@ func (h *Handlers) HandleVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.Videos(sub, videos).Render(r.Context(), w)
+	_ = templates.Videos(sub, videos).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleToggleWatched(w http.ResponseWriter, r *http.Request) {
@@ -44,5 +44,5 @@ func (h *Handlers) HandleToggleWatched(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.VideoCard(video).Render(r.Context(), w)
+	_ = templates.VideoCard(video).Render(r.Context(), w)
 }

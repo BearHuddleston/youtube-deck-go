@@ -31,5 +31,5 @@ func (h *Handlers) HandleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isAuth := h.auth != nil && h.auth.IsAuthenticated()
-	templates.Home(subs, isAuth).Render(r.Context(), w)
+	_ = templates.Home(subs, isAuth).Render(r.Context(), w)
 }

@@ -13,7 +13,7 @@ import (
 var cacheDir = "cache/images"
 
 func init() {
-	os.MkdirAll(cacheDir, 0755)
+	_ = os.MkdirAll(cacheDir, 0755)
 }
 
 func (h *Handlers) HandleImageProxy(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +35,7 @@ func (h *Handlers) HandleImageProxy(w http.ResponseWriter, r *http.Request) {
 	if data, err := os.ReadFile(cachePath); err == nil {
 		w.Header().Set("Content-Type", "image/jpeg")
 		w.Header().Set("Cache-Control", "public, max-age=604800")
-		w.Write(data)
+		_, _ = w.Write(data)
 		return
 	}
 
@@ -57,9 +57,9 @@ func (h *Handlers) HandleImageProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	os.WriteFile(cachePath, data, 0644)
+	_ = os.WriteFile(cachePath, data, 0644)
 
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.Header().Set("Cache-Control", "public, max-age=604800")
-	w.Write(data)
+	_, _ = w.Write(data)
 }

@@ -60,7 +60,7 @@ func (h *Handlers) HandleDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isAuth := h.auth != nil && h.auth.IsAuthenticated()
-	templates.Deck(allSubs, activeSubs, isAuth).Render(r.Context(), w)
+	_ = templates.Deck(allSubs, activeSubs, isAuth).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +77,7 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.ColumnVideos(videos).Render(r.Context(), w)
+	_ = templates.ColumnVideos(videos).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +107,7 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
-		templates.Column(templates.SubscriptionWithCount{
+		_ = templates.Column(templates.SubscriptionWithCount{
 			Subscription:   sub,
 			UnwatchedCount: count,
 		}).Render(r.Context(), w)
@@ -119,7 +119,7 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, row := range rows {
 			if row.ID == id {
-				templates.SidebarItem(templates.SubscriptionWithCount{
+				_ = templates.SidebarItem(templates.SubscriptionWithCount{
 					Subscription: db.Subscription{
 						ID:           row.ID,
 						Name:         row.Name,
@@ -155,7 +155,7 @@ func (h *Handlers) HandleReorder(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		h.queries.UpdateSubscriptionPosition(r.Context(), db.UpdateSubscriptionPositionParams{
+		_ = h.queries.UpdateSubscriptionPosition(r.Context(), db.UpdateSubscriptionPositionParams{
 			Position: sql.NullInt64{Int64: int64(i), Valid: true},
 			ID:       id,
 		})

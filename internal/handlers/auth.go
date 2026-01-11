@@ -55,7 +55,7 @@ func (h *AuthHandlers) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.auth.SaveToken("token.json")
+	_ = h.auth.SaveToken("token.json")
 
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
@@ -77,7 +77,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 	svc, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		templates.SearchError("Failed to create YouTube service: " + err.Error()).Render(ctx, w)
+		_ = templates.SearchError("Failed to create YouTube service: "+err.Error()).Render(ctx, w)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 		resp, err := call.Do()
 		if err != nil {
-			templates.SearchError("Failed to fetch subscriptions: " + err.Error()).Render(ctx, w)
+			_ = templates.SearchError("Failed to fetch subscriptions: "+err.Error()).Render(ctx, w)
 			return
 		}
 
@@ -136,7 +136,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 	}
 
 	w.Header().Set("HX-Trigger", `{"showToast": "Imported `+itoa(imported)+` subscriptions"}`)
-	templates.SubscriptionGrid(subsWithCount).Render(ctx, w)
+	_ = templates.SubscriptionGrid(subsWithCount).Render(ctx, w)
 }
 
 func (h *AuthHandlers) IsAuthenticated() bool {

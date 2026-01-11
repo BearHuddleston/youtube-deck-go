@@ -119,6 +119,6 @@ func (m *Manager) LoadToken(path string) error {
 
 func generateState() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
 }
