@@ -5,8 +5,8 @@ SELECT * FROM subscriptions ORDER BY name;
 SELECT * FROM subscriptions WHERE id = ?;
 
 -- name: CreateSubscription :one
-INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url)
-VALUES (?, ?, ?, ?)
+INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url, position, active)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: DeleteSubscription :exec
@@ -58,3 +58,27 @@ FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
 ORDER BY s.name;
+
+-- name: ListAllSubscriptionsOrdered :many
+SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+GROUP BY s.id
+ORDER BY s.position, s.name;
+
+-- name: ListActiveSubscriptions :many
+SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+WHERE s.active = 1
+GROUP BY s.id
+ORDER BY s.position;
+
+-- name: UpdateSubscriptionActive :exec
+UPDATE subscriptions SET active = ? WHERE id = ?;
+
+-- name: UpdateSubscriptionPosition :exec
+UPDATE subscriptions SET position = ? WHERE id = ?;
+
+-- name: GetMaxPosition :one
+SELECT COALESCE(MAX(position), 0) as max_position FROM subscriptions;

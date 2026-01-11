@@ -5,7 +5,9 @@ CREATE TABLE subscriptions (
     type TEXT NOT NULL CHECK(type IN ('channel', 'playlist')),
     thumbnail_url TEXT,
     last_checked DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    position INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 0
 );
 
 CREATE TABLE videos (

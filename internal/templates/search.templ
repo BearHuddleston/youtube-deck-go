@@ -112,7 +112,7 @@ templ SearchResultItem(r youtube.SearchResult) {
 		<button
 			hx-post="/subscriptions"
 			hx-vals={ `{"youtube_id":"` + r.ID + `","name":"` + escapeJSON(r.Title) + `","type":"` + r.Type + `","thumbnail_url":"` + r.ThumbnailURL + `"}` }
-			hx-target="#subscriptions"
+			hx-target="#sidebar-list"
 			hx-swap="beforeend"
 			hx-on::after-request="document.getElementById('modal').innerHTML=''"
 			class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"

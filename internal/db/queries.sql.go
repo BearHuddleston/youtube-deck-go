@@ -22,9 +22,9 @@ func (q *Queries) CountUnwatchedBySubscription(ctx context.Context, subscription
 }
 
 const createSubscription = `-- name: CreateSubscription :one
-INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url)
-VALUES (?, ?, ?, ?)
-RETURNING id, name, youtube_id, type, thumbnail_url, last_checked, created_at
+INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url, position, active)
+VALUES (?, ?, ?, ?, ?, ?)
+RETURNING id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active
 `
 
 type CreateSubscriptionParams struct {
@@ -32,6 +32,8 @@ type CreateSubscriptionParams struct {
 	YoutubeID    string         `json:"youtube_id"`
 	Type         string         `json:"type"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
+	Position     sql.NullInt64  `json:"position"`
+	Active       sql.NullInt64  `json:"active"`
 }
 
 func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (Subscription, error) {
@@ -40,6 +42,8 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		arg.YoutubeID,
 		arg.Type,
 		arg.ThumbnailUrl,
+		arg.Position,
+		arg.Active,
 	)
 	var i Subscription
 	err := row.Scan(
@@ -50,6 +54,8 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		&i.ThumbnailUrl,
 		&i.LastChecked,
 		&i.CreatedAt,
+		&i.Position,
+		&i.Active,
 	)
 	return i, err
 }
@@ -102,8 +108,19 @@ func (q *Queries) DeleteSubscription(ctx context.Context, id int64) error {
 	return err
 }
 
+const getMaxPosition = `-- name: GetMaxPosition :one
+SELECT COALESCE(MAX(position), 0) as max_position FROM subscriptions
+`
+
+func (q *Queries) GetMaxPosition(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getMaxPosition)
+	var max_position interface{}
+	err := row.Scan(&max_position)
+	return max_position, err
+}
+
 const getSubscription = `-- name: GetSubscription :one
-SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at FROM subscriptions WHERE id = ?
+SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active FROM subscriptions WHERE id = ?
 `
 
 func (q *Queries) GetSubscription(ctx context.Context, id int64) (Subscription, error) {
@@ -117,6 +134,8 @@ func (q *Queries) GetSubscription(ctx context.Context, id int64) (Subscription, 
 		&i.ThumbnailUrl,
 		&i.LastChecked,
 		&i.CreatedAt,
+		&i.Position,
+		&i.Active,
 	)
 	return i, err
 }
@@ -142,8 +161,119 @@ func (q *Queries) GetVideo(ctx context.Context, id int64) (Video, error) {
 	return i, err
 }
 
+const listActiveSubscriptions = `-- name: ListActiveSubscriptions :many
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+WHERE s.active = 1
+GROUP BY s.id
+ORDER BY s.position
+`
+
+type ListActiveSubscriptionsRow struct {
+	ID             int64          `json:"id"`
+	Name           string         `json:"name"`
+	YoutubeID      string         `json:"youtube_id"`
+	Type           string         `json:"type"`
+	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
+	LastChecked    sql.NullTime   `json:"last_checked"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	Position       sql.NullInt64  `json:"position"`
+	Active         sql.NullInt64  `json:"active"`
+	UnwatchedCount int64          `json:"unwatched_count"`
+}
+
+func (q *Queries) ListActiveSubscriptions(ctx context.Context) ([]ListActiveSubscriptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveSubscriptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListActiveSubscriptionsRow{}
+	for rows.Next() {
+		var i ListActiveSubscriptionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.YoutubeID,
+			&i.Type,
+			&i.ThumbnailUrl,
+			&i.LastChecked,
+			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
+			&i.UnwatchedCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllSubscriptionsOrdered = `-- name: ListAllSubscriptionsOrdered :many
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+GROUP BY s.id
+ORDER BY s.position, s.name
+`
+
+type ListAllSubscriptionsOrderedRow struct {
+	ID             int64          `json:"id"`
+	Name           string         `json:"name"`
+	YoutubeID      string         `json:"youtube_id"`
+	Type           string         `json:"type"`
+	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
+	LastChecked    sql.NullTime   `json:"last_checked"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	Position       sql.NullInt64  `json:"position"`
+	Active         sql.NullInt64  `json:"active"`
+	UnwatchedCount int64          `json:"unwatched_count"`
+}
+
+func (q *Queries) ListAllSubscriptionsOrdered(ctx context.Context) ([]ListAllSubscriptionsOrderedRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllSubscriptionsOrdered)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllSubscriptionsOrderedRow{}
+	for rows.Next() {
+		var i ListAllSubscriptionsOrderedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.YoutubeID,
+			&i.Type,
+			&i.ThumbnailUrl,
+			&i.LastChecked,
+			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
+			&i.UnwatchedCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSubscriptions = `-- name: ListSubscriptions :many
-SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at FROM subscriptions ORDER BY name
+SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active FROM subscriptions ORDER BY name
 `
 
 func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error) {
@@ -163,6 +293,8 @@ func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error)
 			&i.ThumbnailUrl,
 			&i.LastChecked,
 			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
 		); err != nil {
 			return nil, err
 		}
@@ -178,7 +310,7 @@ func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error)
 }
 
 const listSubscriptionsWithUnwatchedCount = `-- name: ListSubscriptionsWithUnwatchedCount :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
@@ -193,6 +325,8 @@ type ListSubscriptionsWithUnwatchedCountRow struct {
 	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
 	LastChecked    sql.NullTime   `json:"last_checked"`
 	CreatedAt      sql.NullTime   `json:"created_at"`
+	Position       sql.NullInt64  `json:"position"`
+	Active         sql.NullInt64  `json:"active"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -213,6 +347,8 @@ func (q *Queries) ListSubscriptionsWithUnwatchedCount(ctx context.Context) ([]Li
 			&i.ThumbnailUrl,
 			&i.LastChecked,
 			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -321,7 +457,7 @@ func (q *Queries) MarkWatched(ctx context.Context, id int64) error {
 }
 
 const subscriptionsWithUnwatchedCount = `-- name: SubscriptionsWithUnwatchedCount :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
@@ -336,6 +472,8 @@ type SubscriptionsWithUnwatchedCountRow struct {
 	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
 	LastChecked    sql.NullTime   `json:"last_checked"`
 	CreatedAt      sql.NullTime   `json:"created_at"`
+	Position       sql.NullInt64  `json:"position"`
+	Active         sql.NullInt64  `json:"active"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -356,6 +494,8 @@ func (q *Queries) SubscriptionsWithUnwatchedCount(ctx context.Context) ([]Subscr
 			&i.ThumbnailUrl,
 			&i.LastChecked,
 			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -393,12 +533,40 @@ func (q *Queries) ToggleWatched(ctx context.Context, id int64) (Video, error) {
 	return i, err
 }
 
+const updateSubscriptionActive = `-- name: UpdateSubscriptionActive :exec
+UPDATE subscriptions SET active = ? WHERE id = ?
+`
+
+type UpdateSubscriptionActiveParams struct {
+	Active sql.NullInt64 `json:"active"`
+	ID     int64         `json:"id"`
+}
+
+func (q *Queries) UpdateSubscriptionActive(ctx context.Context, arg UpdateSubscriptionActiveParams) error {
+	_, err := q.db.ExecContext(ctx, updateSubscriptionActive, arg.Active, arg.ID)
+	return err
+}
+
 const updateSubscriptionChecked = `-- name: UpdateSubscriptionChecked :exec
 UPDATE subscriptions SET last_checked = CURRENT_TIMESTAMP WHERE id = ?
 `
 
 func (q *Queries) UpdateSubscriptionChecked(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, updateSubscriptionChecked, id)
+	return err
+}
+
+const updateSubscriptionPosition = `-- name: UpdateSubscriptionPosition :exec
+UPDATE subscriptions SET position = ? WHERE id = ?
+`
+
+type UpdateSubscriptionPositionParams struct {
+	Position sql.NullInt64 `json:"position"`
+	ID       int64         `json:"id"`
+}
+
+func (q *Queries) UpdateSubscriptionPosition(ctx context.Context, arg UpdateSubscriptionPositionParams) error {
+	_, err := q.db.ExecContext(ctx, updateSubscriptionPosition, arg.Position, arg.ID)
 	return err
 }
 

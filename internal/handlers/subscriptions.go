@@ -23,18 +23,26 @@ func (h *Handlers) HandleAddSubscription(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	maxPosRaw, _ := h.queries.GetMaxPosition(r.Context())
+	var maxPos int64
+	if v, ok := maxPosRaw.(int64); ok {
+		maxPos = v
+	}
+
 	sub, err := h.queries.CreateSubscription(r.Context(), db.CreateSubscriptionParams{
 		YoutubeID:    req.YoutubeID,
 		Name:         req.Name,
 		Type:         req.Type,
 		ThumbnailUrl: sql.NullString{String: req.ThumbnailURL, Valid: req.ThumbnailURL != ""},
+		Position:     sql.NullInt64{Int64: maxPos + 1, Valid: true},
+		Active:       sql.NullInt64{Int64: 0, Valid: true},
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	templates.SubscriptionCard(templates.SubscriptionWithCount{
+	templates.SidebarItem(templates.SubscriptionWithCount{
 		Subscription:   sub,
 		UnwatchedCount: 0,
 	}).Render(r.Context(), w)
@@ -70,14 +78,13 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var videos []db.Video
 	if sub.Type == "channel" {
 		vids, err := h.yt.FetchChannelVideos(r.Context(), sub.YoutubeID, 20)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		videos, err = h.saveVideos(r, sub.ID, vids)
+		_, err = h.saveVideos(r, sub.ID, vids)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -88,7 +95,7 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		videos, err = h.saveVideos(r, sub.ID, vids)
+		_, err = h.saveVideos(r, sub.ID, vids)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -97,17 +104,18 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 
 	h.queries.UpdateSubscriptionChecked(r.Context(), id)
 
-	unwatchedCount := int64(0)
-	for _, v := range videos {
-		if !v.Watched.Valid || v.Watched.Int64 == 0 {
-			unwatchedCount++
-		}
-	}
+	unwatchedCount, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
 
-	templates.SubscriptionCard(templates.SubscriptionWithCount{
+	swc := templates.SubscriptionWithCount{
 		Subscription:   sub,
 		UnwatchedCount: unwatchedCount,
-	}).Render(r.Context(), w)
+	}
+
+	if sub.Active.Valid && sub.Active.Int64 == 1 {
+		templates.Column(swc).Render(r.Context(), w)
+	} else {
+		templates.SubscriptionCard(swc).Render(r.Context(), w)
+	}
 }
 
 func (h *Handlers) saveVideos(r *http.Request, subID int64, vids []youtube.VideoInfo) ([]db.Video, error) {

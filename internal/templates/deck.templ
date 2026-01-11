@@ -1,0 +1,191 @@
+package templates
+
+func isActive(sub SubscriptionWithCount) bool {
+	return sub.Active.Valid && sub.Active.Int64 == 1
+}
+
+templ Deck(allSubs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, isAuthenticated bool) {
+	@DeckLayout("Deck", isAuthenticated) {
+		<div class="flex h-full" x-data="{ sidebarOpen: true }">
+			@Sidebar(allSubs)
+			<div class="flex-1 deck-scroll">
+				<div id="deck-columns" class="flex gap-4 p-4 h-full">
+					for _, sub := range activeSubs {
+						@Column(sub)
+					}
+					if len(activeSubs) == 0 {
+						@DeckEmptyState()
+					}
+				</div>
+			</div>
+		</div>
+		@DeckScripts()
+	}
+}
+
+templ DeckEmptyState() {
+	<div class="flex flex-col items-center justify-center flex-1 text-center p-8">
+		<div class="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+			<svg class="w-10 h-10 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+			</svg>
+		</div>
+		<h3 class="text-lg font-semibold text-zinc-200 mb-2">No columns yet</h3>
+		<p class="text-zinc-500 text-sm max-w-xs">
+			Click the + button on subscriptions in the sidebar to add them as columns.
+		</p>
+	</div>
+}
+
+templ Sidebar(subs []SubscriptionWithCount) {
+	<aside
+		class="bg-zinc-900 border-r border-zinc-800 sidebar-transition overflow-hidden flex flex-col"
+		:class="sidebarOpen ? 'w-64' : 'w-0'"
+	>
+		<div class="flex-1 overflow-y-auto" x-show="sidebarOpen" x-cloak>
+			<div class="flex items-center justify-between p-3 border-b border-zinc-800">
+				<h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Subscriptions</h2>
+				<button
+					@click="sidebarOpen = false"
+					class="p-1 hover:bg-zinc-800 rounded transition-colors"
+				>
+					<svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+					</svg>
+				</button>
+			</div>
+			<div id="sidebar-list" class="p-2 space-y-1">
+				for _, sub := range subs {
+					@SidebarItem(sub)
+				}
+				if len(subs) == 0 {
+					<div class="text-center py-8 text-zinc-500 text-sm">
+						No subscriptions yet
+					</div>
+				}
+			</div>
+		</div>
+	</aside>
+	<button
+		x-show="!sidebarOpen"
+		x-cloak
+		@click="sidebarOpen = true"
+		class="fixed left-0 top-1/2 -translate-y-1/2 bg-zinc-800 hover:bg-zinc-700 p-2 rounded-r-lg border border-l-0 border-zinc-700 transition-colors z-30"
+	>
+		<svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+		</svg>
+	</button>
+}
+
+templ SidebarItem(sub SubscriptionWithCount) {
+	<div
+		id={ "sidebar-" + itoa(sub.ID) }
+		data-id={ itoa(sub.ID) }
+		class="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-800 cursor-grab group"
+	>
+		if sub.ThumbnailUrl.Valid {
+			<img src={ proxyURL(sub.ThumbnailUrl.String) } alt="" class="w-8 h-8 rounded-full object-cover flex-shrink-0"/>
+		} else {
+			<div class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0">
+				<svg class="w-4 h-4 text-zinc-500" fill="currentColor" viewBox="0 0 24 24">
+					<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+				</svg>
+			</div>
+		}
+		<div class="flex-1 min-w-0">
+			<div class="text-sm font-medium text-zinc-200 truncate">{ sub.Name }</div>
+			<div class="text-xs text-zinc-500 capitalize">{ sub.Type }</div>
+		</div>
+		if sub.UnwatchedCount > 0 {
+			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+				{ itoa64(sub.UnwatchedCount) }
+			</span>
+		}
+		if isActive(sub) {
+			<button
+				hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=0" }
+				hx-target={ "#sidebar-" + itoa(sub.ID) }
+				hx-swap="outerHTML"
+				class="p-1 bg-emerald-600 hover:bg-emerald-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+				title="Remove from deck"
+			>
+				<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+				</svg>
+			</button>
+		} else {
+			<button
+				hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=1" }
+				hx-target="#deck-columns"
+				hx-swap="beforeend"
+				class="p-1 bg-zinc-700 hover:bg-zinc-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+				title="Add to deck"
+			>
+				<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+				</svg>
+			</button>
+		}
+	</div>
+}
+
+templ SidebarList(subs []SubscriptionWithCount) {
+	for _, sub := range subs {
+		@SidebarItem(sub)
+	}
+	if len(subs) == 0 {
+		<div class="text-center py-8 text-zinc-500 text-sm">
+			No subscriptions yet
+		</div>
+	}
+}
+
+templ DeckScripts() {
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			initSortables();
+		});
+
+		function initSortables() {
+			const sidebarList = document.getElementById('sidebar-list');
+			if (sidebarList && !sidebarList._sortable) {
+				sidebarList._sortable = new Sortable(sidebarList, {
+					animation: 150,
+					ghostClass: 'sortable-ghost',
+					onEnd: function(evt) {
+						const ids = [...evt.to.children].filter(el => el.dataset.id).map(el => el.dataset.id);
+						fetch('/subscriptions/reorder', {
+							method: 'POST',
+							headers: {'Content-Type': 'application/json'},
+							body: JSON.stringify({ids: ids, context: 'sidebar'})
+						});
+					}
+				});
+			}
+
+			const deckColumns = document.getElementById('deck-columns');
+			if (deckColumns && !deckColumns._sortable) {
+				deckColumns._sortable = new Sortable(deckColumns, {
+					animation: 150,
+					handle: '.column-handle',
+					ghostClass: 'sortable-ghost',
+					onEnd: function(evt) {
+						const ids = [...evt.to.children].filter(el => el.dataset.id).map(el => el.dataset.id);
+						fetch('/subscriptions/reorder', {
+							method: 'POST',
+							headers: {'Content-Type': 'application/json'},
+							body: JSON.stringify({ids: ids, context: 'columns'})
+						});
+					}
+				});
+			}
+		}
+
+		document.body.addEventListener('htmx:afterSwap', function(evt) {
+			if (evt.detail.target.id === 'deck-columns' || evt.detail.target.id === 'sidebar-list') {
+				initSortables();
+			}
+		});
+	</script>
+}

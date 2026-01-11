@@ -16,6 +16,8 @@ type Subscription struct {
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
 	LastChecked  sql.NullTime   `json:"last_checked"`
 	CreatedAt    sql.NullTime   `json:"created_at"`
+	Position     sql.NullInt64  `json:"position"`
+	Active       sql.NullInt64  `json:"active"`
 }
 
 type Video struct {
