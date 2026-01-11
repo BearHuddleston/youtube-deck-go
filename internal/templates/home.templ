@@ -1,0 +1,95 @@
+package templates
+
+import (
+	"strconv"
+
+	"youtube-deck-go/internal/db"
+)
+
+type SubscriptionWithCount struct {
+	db.Subscription
+	UnwatchedCount int64
+}
+
+templ Home(subscriptions []SubscriptionWithCount, isAuthenticated bool) {
+	@LayoutWithAuth("Dashboard", isAuthenticated) {
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="subscriptions">
+			for _, sub := range subscriptions {
+				@SubscriptionCard(sub)
+			}
+			if len(subscriptions) == 0 {
+				<div class="col-span-full text-center py-12 text-gray-400">
+					<p class="text-lg">No subscriptions yet</p>
+					<p class="text-sm mt-2">Click "Add Subscription" to get started</p>
+				</div>
+			}
+		</div>
+	}
+}
+
+templ SubscriptionCard(sub SubscriptionWithCount) {
+	<div
+		id={ "sub-" + itoa(sub.ID) }
+		class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors"
+	>
+		<a href={ templ.SafeURL("/subscriptions/" + itoa(sub.ID) + "/videos") } class="block">
+			if sub.ThumbnailUrl.Valid {
+				<img src={ sub.ThumbnailUrl.String } alt={ sub.Name } class="w-full h-32 object-cover"/>
+			} else {
+				<div class="w-full h-32 bg-gray-700 flex items-center justify-center">
+					<span class="text-4xl text-gray-500">📺</span>
+				</div>
+			}
+			<div class="p-4">
+				<h3 class="font-semibold truncate">{ sub.Name }</h3>
+				<div class="flex items-center justify-between mt-2 text-sm">
+					<span class="text-gray-400">{ sub.Type }</span>
+					if sub.UnwatchedCount > 0 {
+						<span class="bg-red-600 px-2 py-0.5 rounded-full text-xs">
+							{ itoa64(sub.UnwatchedCount) } unwatched
+						</span>
+					}
+				</div>
+			</div>
+		</a>
+		<div class="px-4 pb-4 flex gap-2">
+			<button
+				hx-post={ "/subscriptions/" + itoa(sub.ID) + "/refresh" }
+				hx-target={ "#sub-" + itoa(sub.ID) }
+				hx-swap="outerHTML"
+				class="flex-1 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm"
+			>
+				Refresh
+			</button>
+			<button
+				hx-delete={ "/subscriptions/" + itoa(sub.ID) }
+				hx-target={ "#sub-" + itoa(sub.ID) }
+				hx-swap="delete"
+				hx-confirm="Delete this subscription?"
+				class="bg-gray-700 hover:bg-red-600 px-3 py-1.5 rounded text-sm"
+			>
+				🗑️
+			</button>
+		</div>
+	</div>
+}
+
+func itoa(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
+
+func itoa64(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
+
+templ SubscriptionGrid(subscriptions []SubscriptionWithCount) {
+	for _, sub := range subscriptions {
+		@SubscriptionCard(sub)
+	}
+	if len(subscriptions) == 0 {
+		<div class="col-span-full text-center py-12 text-gray-400">
+			<p class="text-lg">No subscriptions yet</p>
+			<p class="text-sm mt-2">Click "Add Subscription" or "Import" to get started</p>
+		</div>
+	}
+}

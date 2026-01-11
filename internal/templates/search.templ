@@ -1,0 +1,118 @@
+package templates
+
+import "youtube-deck-go/internal/youtube"
+
+templ SearchModal() {
+	<div class="fixed inset-0 bg-black/70 flex items-start justify-center pt-20 z-50" id="search-modal">
+		<div class="bg-gray-800 rounded-lg w-full max-w-lg mx-4 border border-gray-700">
+			<div class="p-4 border-b border-gray-700 flex justify-between items-center">
+				<h2 class="text-lg font-semibold">Add Subscription</h2>
+				<button
+					hx-get="/search/close"
+					hx-target="#modal"
+					hx-swap="innerHTML"
+					class="text-gray-400 hover:text-gray-200"
+				>
+					✕
+				</button>
+			</div>
+			<div class="p-4">
+				<input
+					type="text"
+					name="q"
+					placeholder="Search YouTube channels or playlists..."
+					hx-get="/search/results"
+					hx-trigger="input changed delay:300ms"
+					hx-target="#search-results"
+					hx-include="[name='type']"
+					class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-red-500"
+				/>
+				<div class="mt-2 text-sm text-gray-400">
+					<label class="inline-flex items-center mr-4">
+						<input type="radio" name="type" value="channel" checked class="mr-1" hx-get="/search/results" hx-include="[name='q']" hx-trigger="change" hx-target="#search-results"/>
+						Channels
+					</label>
+					<label class="inline-flex items-center">
+						<input type="radio" name="type" value="playlist" class="mr-1" hx-get="/search/results" hx-include="[name='q']" hx-trigger="change" hx-target="#search-results"/>
+						Playlists
+					</label>
+				</div>
+				<div id="search-results" class="mt-4 max-h-80 overflow-y-auto"></div>
+			</div>
+		</div>
+	</div>
+}
+
+templ SearchResults(results []youtube.SearchResult) {
+	if len(results) == 0 {
+		<div class="text-center py-4 text-gray-400">
+			No results found
+		</div>
+	} else {
+		<div class="space-y-2">
+			for _, r := range results {
+				@SearchResultItem(r)
+			}
+		</div>
+	}
+}
+
+templ SearchError(msg string) {
+	<div class="text-center py-4 text-red-400">
+		Error: { msg }
+	</div>
+}
+
+templ SearchResultItem(r youtube.SearchResult) {
+	<div class="flex items-center gap-3 p-2 rounded hover:bg-gray-700">
+		if r.ThumbnailURL != "" {
+			<img src={ r.ThumbnailURL } alt={ r.Title } class="w-12 h-12 rounded object-cover"/>
+		} else {
+			<div class="w-12 h-12 bg-gray-600 rounded flex items-center justify-center">
+				if r.Type == "channel" {
+					<span>📺</span>
+				} else {
+					<span>📋</span>
+				}
+			</div>
+		}
+		<div class="flex-1 min-w-0">
+			<div class="font-medium truncate">{ r.Title }</div>
+			<div class="text-sm text-gray-400">{ r.Type }</div>
+		</div>
+		<button
+			hx-post="/subscriptions"
+			hx-vals={ `{"youtube_id":"` + r.ID + `","name":"` + escapeJSON(r.Title) + `","type":"` + r.Type + `","thumbnail_url":"` + r.ThumbnailURL + `"}` }
+			hx-target="#subscriptions"
+			hx-swap="beforeend"
+			hx-on::after-request="document.getElementById('modal').innerHTML=''"
+			class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm shrink-0"
+		>
+			Subscribe
+		</button>
+	</div>
+}
+
+templ SearchClose() {
+}
+
+func escapeJSON(s string) string {
+	var result string
+	for _, c := range s {
+		switch c {
+		case '"':
+			result += `\"`
+		case '\\':
+			result += `\\`
+		case '\n':
+			result += `\n`
+		case '\r':
+			result += `\r`
+		case '\t':
+			result += `\t`
+		default:
+			result += string(c)
+		}
+	}
+	return result
+}
