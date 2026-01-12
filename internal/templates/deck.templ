@@ -54,19 +54,7 @@ templ Sidebar(subs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, 
 					</svg>
 				</button>
 			</div>
-			if len(activeSubs) > 0 {
-				<div id="active-columns-section" class="border-b border-zinc-800">
-					<div class="px-3 py-2 flex items-center justify-between">
-						<h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Active Columns</h3>
-						<span class="text-xs text-zinc-600">{ itoa(int64(len(activeSubs))) }</span>
-					</div>
-					<div id="active-columns-list" class="px-2 pb-2 flex flex-wrap gap-1">
-						for _, sub := range activeSubs {
-							@ActiveColumnChip(sub)
-						}
-					</div>
-				</div>
-			}
+			@ActiveColumnsSection(activeSubs)
 			<div class="p-2 border-b border-zinc-800">
 				<div class="relative">
 					<svg class="w-4 h-4 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,35 +165,48 @@ templ SidebarLoadMore(offset int64) {
 	</div>
 }
 
-templ ColumnWithChip(sub SubscriptionWithCount, isFirstActive bool) {
-	@Column(sub)
-	if isFirstActive {
-		@ActiveSectionOOB(sub)
-	} else {
-		@ActiveColumnChipOOB(sub)
-	}
-}
-
-templ ActiveSectionOOB(sub SubscriptionWithCount) {
+templ ActiveColumnsSection(subs []SubscriptionWithCount) {
 	<div
 		id="active-columns-section"
-		hx-swap-oob="afterbegin:#sidebar-content"
-		class="border-b border-zinc-800"
+		if len(subs) == 0 {
+			class="hidden"
+		} else {
+			class="border-b border-zinc-800"
+		}
 	>
 		<div class="px-3 py-2 flex items-center justify-between">
 			<h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Active Columns</h3>
-			<span class="text-xs text-zinc-600">1</span>
+			<span id="active-columns-count" class="text-xs text-zinc-600">{ itoa(int64(len(subs))) }</span>
 		</div>
 		<div id="active-columns-list" class="px-2 pb-2 flex flex-wrap gap-1">
-			@ActiveColumnChip(sub)
+			for _, sub := range subs {
+				@ActiveColumnChip(sub)
+			}
 		</div>
 	</div>
 }
 
-templ ActiveColumnChipOOB(sub SubscriptionWithCount) {
+templ ColumnWithChip(sub SubscriptionWithCount, activeCount int64) {
+	@Column(sub)
+	@ActiveColumnChipOOB(sub, activeCount)
+}
+
+templ ActiveColumnChipOOB(sub SubscriptionWithCount, activeCount int64) {
 	<div hx-swap-oob="beforeend:#active-columns-list">
 		@ActiveColumnChip(sub)
 	</div>
+	<span id="active-columns-count" hx-swap-oob="true" class="text-xs text-zinc-600">{ itoa64(activeCount) }</span>
+	if activeCount == 1 {
+		<div id="active-columns-section" hx-swap-oob="outerHTML" class="border-b border-zinc-800">
+			<div class="px-3 py-2 flex items-center justify-between">
+				<h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Active Columns</h3>
+				<span id="active-columns-count" class="text-xs text-zinc-600">1</span>
+			</div>
+			<div id="active-columns-list" class="px-2 pb-2 flex flex-wrap gap-1">
+				@ActiveColumnChip(sub)
+			</div>
+		</div>
+	}
 }
 
 templ ActiveColumnChip(sub SubscriptionWithCount) {
@@ -288,13 +289,16 @@ templ DeckScripts() {
 		function updateActiveSection() {
 			const section = document.getElementById('active-columns-section');
 			const list = document.getElementById('active-columns-list');
+			const countEl = document.getElementById('active-columns-count');
 			if (!section || !list) return;
 
 			const chips = list.querySelectorAll('[id^="active-chip-"]');
 			if (chips.length === 0) {
-				section.remove();
+				section.classList.add('hidden');
+				section.classList.remove('border-b', 'border-zinc-800');
 			} else {
-				const countEl = section.querySelector('span');
+				section.classList.remove('hidden');
+				section.classList.add('border-b', 'border-zinc-800');
 				if (countEl) countEl.textContent = chips.length;
 			}
 		}
