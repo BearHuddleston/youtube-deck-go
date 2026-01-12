@@ -107,11 +107,13 @@ templ SidebarItem(sub SubscriptionWithCount) {
 			<div class="text-sm font-medium text-zinc-200 truncate">{ sub.Name }</div>
 			<div class="text-xs text-zinc-500 capitalize">{ sub.Type }</div>
 		</div>
-		if sub.UnwatchedCount > 0 {
-			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
-				{ itoa64(sub.UnwatchedCount) }
-			</span>
-		}
+		<span id={ "sidebar-count-" + itoa(sub.ID) }>
+			if sub.UnwatchedCount > 0 {
+				<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+					{ itoa64(sub.UnwatchedCount) }
+				</span>
+			}
+		</span>
 		if isActive(sub) {
 			<button
 				hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=0" }
@@ -152,6 +154,16 @@ templ SidebarList(subs []SubscriptionWithCount, hasMore bool, nextOffset int64) 
 	if hasMore {
 		@SidebarLoadMore(nextOffset)
 	}
+}
+
+templ SidebarCountOOB(subscriptionID int64, count int64) {
+	<span id={ "sidebar-count-" + itoa(subscriptionID) } hx-swap-oob="true">
+		if count > 0 {
+			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+				{ itoa64(count) }
+			</span>
+		}
+	</span>
 }
 
 templ SidebarLoadMore(offset int64) {

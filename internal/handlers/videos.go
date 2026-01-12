@@ -47,5 +47,5 @@ func (h *Handlers) HandleToggleWatched(w http.ResponseWriter, r *http.Request) {
 	_ = h.queries.MarkWatched(r.Context(), id)
 
 	count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), video.SubscriptionID)
-	_ = templates.ColumnCountOOB(video.SubscriptionID, count).Render(r.Context(), w)
+	_ = templates.UnwatchedCountsOOB(video.SubscriptionID, count).Render(r.Context(), w)
 }

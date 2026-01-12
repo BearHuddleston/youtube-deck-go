@@ -144,6 +144,9 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 		ID:        sub.ID,
 	})
 
+	// Get new total count after saving videos
+	newCount, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
+
 	// Query starting from where we left off (after existing videos)
 	videos, _ := h.queries.ListUnwatchedVideosPaginated(r.Context(), db.ListUnwatchedVideosPaginatedParams{
 		SubscriptionID: id,
@@ -160,6 +163,7 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 
 	nextOffset := existingCount + int64(len(videos))
 	_ = templates.ColumnVideos(videos, id, hasMoreDB, canFetchMore, nextOffset).Render(r.Context(), w)
+	_ = templates.UnwatchedCountsOOB(id, newCount).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +216,7 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 			Subscription:   sub,
 			UnwatchedCount: count,
 		}, activeCount).Render(r.Context(), w)
+		_ = templates.SidebarCountOOB(id, count).Render(r.Context(), w)
 	} else {
 		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())
 		rows, err := h.queries.ListAllSubscriptionsOrdered(r.Context())

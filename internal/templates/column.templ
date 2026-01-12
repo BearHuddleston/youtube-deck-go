@@ -130,6 +130,23 @@ templ ColumnCountOOB(subscriptionID int64, count int64) {
 	</span>
 }
 
+templ UnwatchedCountsOOB(subscriptionID int64, count int64) {
+	<span id={ "col-count-" + itoa(subscriptionID) } hx-swap-oob="true">
+		if count > 0 {
+			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+				{ itoa64(count) }
+			</span>
+		}
+	</span>
+	<span id={ "sidebar-count-" + itoa(subscriptionID) } hx-swap-oob="true">
+		if count > 0 {
+			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+				{ itoa64(count) }
+			</span>
+		}
+	</span>
+}
+
 templ ColumnVideoCard(video db.Video) {
 	<div
 		id={ "col-video-" + itoa(video.ID) }
