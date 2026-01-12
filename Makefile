@@ -1,4 +1,4 @@
-.PHONY: build run generate clean dev lint test
+.PHONY: build run generate clean dev lint test reset
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
@@ -36,3 +36,7 @@ lint:
 
 test:
 	$(GO) test ./...
+
+reset:
+	rm -f data.db token.json
+	rm -rf cache/
