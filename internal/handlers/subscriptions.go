@@ -42,9 +42,25 @@ func (h *Handlers) HandleAddSubscription(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	var unwatchedCount int64
+	if req.Type == "channel" {
+		vids, err := h.yt.FetchChannelVideos(r.Context(), req.YoutubeID, 20)
+		if err == nil {
+			_ = h.saveVideos(r, sub.ID, vids)
+			unwatchedCount = int64(len(vids))
+		}
+	} else {
+		vids, err := h.yt.FetchPlaylistVideos(r.Context(), req.YoutubeID, 20)
+		if err == nil {
+			_ = h.saveVideos(r, sub.ID, vids)
+			unwatchedCount = int64(len(vids))
+		}
+	}
+	_ = h.queries.UpdateSubscriptionChecked(r.Context(), sub.ID)
+
 	_ = templates.SidebarItem(templates.SubscriptionWithCount{
 		Subscription:   sub,
-		UnwatchedCount: 0,
+		UnwatchedCount: unwatchedCount,
 	}).Render(r.Context(), w)
 }
 
