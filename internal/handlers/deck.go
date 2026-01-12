@@ -231,12 +231,35 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
 
+		hideShorts := int64(0)
+		if sub.HideShorts.Valid {
+			hideShorts = sub.HideShorts.Int64
+		}
+
 		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())
-		count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
-		_ = templates.ColumnWithChip(templates.SubscriptionWithCount{
+		count, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+			SubscriptionID: id,
+			Column2:        hideShorts,
+		})
+
+		videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+			SubscriptionID: id,
+			Column2:        hideShorts,
+			Limit:          columnVideoPageSize + 1,
+			Offset:         0,
+		})
+
+		hasMoreDB := len(videos) > columnVideoPageSize
+		if hasMoreDB {
+			videos = videos[:columnVideoPageSize]
+		}
+
+		canFetchMore := !sub.PageToken.Valid || sub.PageToken.String != ""
+
+		_ = templates.ColumnWithVideosAndChip(templates.SubscriptionWithCount{
 			Subscription:   sub,
 			UnwatchedCount: count,
-		}, activeCount).Render(r.Context(), w)
+		}, videos, hasMoreDB, canFetchMore, int64(len(videos)), activeCount).Render(r.Context(), w)
 		_ = templates.SidebarCountOOB(id, count).Render(r.Context(), w)
 	} else {
 		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())

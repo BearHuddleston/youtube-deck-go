@@ -1,5 +1,7 @@
 package templates
 
+import "youtube-deck-go/internal/db"
+
 func isActive(sub SubscriptionWithCount) bool {
 	return sub.Active.Valid && sub.Active.Int64 == 1
 }
@@ -200,6 +202,11 @@ templ ActiveColumnsSection(subs []SubscriptionWithCount) {
 
 templ ColumnWithChip(sub SubscriptionWithCount, activeCount int64) {
 	@Column(sub)
+	@ActiveColumnChipOOB(sub, activeCount)
+}
+
+templ ColumnWithVideosAndChip(sub SubscriptionWithCount, videos []db.Video, hasMoreDB bool, canFetchMore bool, nextOffset int64, activeCount int64) {
+	@ColumnWithVideos(sub, videos, hasMoreDB, canFetchMore, nextOffset)
 	@ActiveColumnChipOOB(sub, activeCount)
 }
 
