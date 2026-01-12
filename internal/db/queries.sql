@@ -108,3 +108,9 @@ SELECT * FROM videos
 WHERE subscription_id = ? AND watched = 0
 ORDER BY published_at DESC
 LIMIT ? OFFSET ?;
+
+-- name: UpdateSubscriptionPageToken :exec
+UPDATE subscriptions SET page_token = ? WHERE id = ?;
+
+-- name: CountTotalVideos :one
+SELECT COUNT(*) FROM videos WHERE subscription_id = ?;

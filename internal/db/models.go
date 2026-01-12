@@ -18,6 +18,7 @@ type Subscription struct {
 	CreatedAt    sql.NullTime   `json:"created_at"`
 	Position     sql.NullInt64  `json:"position"`
 	Active       sql.NullInt64  `json:"active"`
+	PageToken    sql.NullString `json:"page_token"`
 }
 
 type Video struct {

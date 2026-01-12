@@ -8,6 +8,7 @@ import (
 
 	"youtube-deck-go/internal/db"
 	"youtube-deck-go/internal/templates"
+	"youtube-deck-go/internal/youtube"
 )
 
 func (h *Handlers) HandleDeck(w http.ResponseWriter, r *http.Request) {
@@ -83,13 +84,77 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hasMore := len(videos) > columnVideoPageSize
-	if hasMore {
+	hasMoreDB := len(videos) > columnVideoPageSize
+	if hasMoreDB {
 		videos = videos[:columnVideoPageSize]
 	}
 
+	canFetchMore := false
+	if !hasMoreDB {
+		sub, err := h.queries.GetSubscription(r.Context(), id)
+		if err == nil {
+			// Allow fetching more if we have a next page token OR if we haven't fetched yet (NULL token)
+			// Empty string "" means we've exhausted all pages
+			canFetchMore = !sub.PageToken.Valid || sub.PageToken.String != ""
+		}
+	}
+
 	nextOffset := offset + int64(len(videos))
-	_ = templates.ColumnVideos(videos, id, hasMore, nextOffset).Render(r.Context(), w)
+	_ = templates.ColumnVideos(videos, id, hasMoreDB, canFetchMore, nextOffset).Render(r.Context(), w)
+}
+
+func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	sub, err := h.queries.GetSubscription(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	pageToken := ""
+	if sub.PageToken.Valid {
+		pageToken = sub.PageToken.String
+	}
+
+	var result *youtube.FetchResult
+	if sub.Type == "channel" {
+		result, err = h.yt.FetchChannelVideosWithToken(r.Context(), sub.YoutubeID, pageToken, 20)
+	} else {
+		result, err = h.yt.FetchPlaylistVideosWithToken(r.Context(), sub.YoutubeID, pageToken, 20)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_ = h.saveVideos(r, sub.ID, result.Videos)
+
+	newToken := sql.NullString{String: result.NextPageToken, Valid: result.NextPageToken != ""}
+	_ = h.queries.UpdateSubscriptionPageToken(r.Context(), db.UpdateSubscriptionPageTokenParams{
+		PageToken: newToken,
+		ID:        sub.ID,
+	})
+
+	videos, _ := h.queries.ListUnwatchedVideosPaginated(r.Context(), db.ListUnwatchedVideosPaginatedParams{
+		SubscriptionID: id,
+		Limit:          columnVideoPageSize + 1,
+		Offset:         0,
+	})
+
+	hasMoreDB := len(videos) > columnVideoPageSize
+	if hasMoreDB {
+		videos = videos[:columnVideoPageSize]
+	}
+
+	canFetchMore := result.NextPageToken != ""
+
+	_ = templates.ColumnVideos(videos, id, hasMoreDB, canFetchMore, int64(len(videos))).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
@@ -120,16 +185,19 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Fetch videos from YouTube when adding to deck
+		var result *youtube.FetchResult
 		if sub.Type == "channel" {
-			vids, err := h.yt.FetchChannelVideos(r.Context(), sub.YoutubeID, 20)
-			if err == nil {
-				_ = h.saveVideos(r, sub.ID, vids)
-			}
+			result, err = h.yt.FetchChannelVideosWithToken(r.Context(), sub.YoutubeID, "", 20)
 		} else {
-			vids, err := h.yt.FetchPlaylistVideos(r.Context(), sub.YoutubeID, 20)
-			if err == nil {
-				_ = h.saveVideos(r, sub.ID, vids)
-			}
+			result, err = h.yt.FetchPlaylistVideosWithToken(r.Context(), sub.YoutubeID, "", 20)
+		}
+		if err == nil {
+			_ = h.saveVideos(r, sub.ID, result.Videos)
+			newToken := sql.NullString{String: result.NextPageToken, Valid: result.NextPageToken != ""}
+			_ = h.queries.UpdateSubscriptionPageToken(r.Context(), db.UpdateSubscriptionPageTokenParams{
+				PageToken: newToken,
+				ID:        sub.ID,
+			})
 		}
 		_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
 

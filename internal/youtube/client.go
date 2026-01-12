@@ -28,6 +28,11 @@ type VideoInfo struct {
 	PublishedAt  time.Time
 }
 
+type FetchResult struct {
+	Videos        []VideoInfo
+	NextPageToken string
+}
+
 func New(apiKey string) (*Client, error) {
 	ctx := context.Background()
 	service, err := youtube.NewService(ctx, option.WithAPIKey(apiKey))
@@ -84,6 +89,14 @@ func (c *Client) SearchPlaylists(ctx context.Context, query string, maxResults i
 }
 
 func (c *Client) FetchChannelVideos(ctx context.Context, channelID string, maxResults int64) ([]VideoInfo, error) {
+	result, err := c.FetchChannelVideosWithToken(ctx, channelID, "", maxResults)
+	if err != nil {
+		return nil, err
+	}
+	return result.Videos, nil
+}
+
+func (c *Client) FetchChannelVideosWithToken(ctx context.Context, channelID string, pageToken string, maxResults int64) (*FetchResult, error) {
 	channelResp, err := c.service.Channels.List([]string{"contentDetails"}).
 		Id(channelID).
 		Context(ctx).
@@ -96,13 +109,25 @@ func (c *Client) FetchChannelVideos(ctx context.Context, channelID string, maxRe
 	}
 
 	uploadsPlaylistID := channelResp.Items[0].ContentDetails.RelatedPlaylists.Uploads
-	return c.FetchPlaylistVideos(ctx, uploadsPlaylistID, maxResults)
+	return c.FetchPlaylistVideosWithToken(ctx, uploadsPlaylistID, pageToken, maxResults)
 }
 
 func (c *Client) FetchPlaylistVideos(ctx context.Context, playlistID string, maxResults int64) ([]VideoInfo, error) {
+	result, err := c.FetchPlaylistVideosWithToken(ctx, playlistID, "", maxResults)
+	if err != nil {
+		return nil, err
+	}
+	return result.Videos, nil
+}
+
+func (c *Client) FetchPlaylistVideosWithToken(ctx context.Context, playlistID string, pageToken string, maxResults int64) (*FetchResult, error) {
 	call := c.service.PlaylistItems.List([]string{"snippet", "contentDetails"}).
 		PlaylistId(playlistID).
 		MaxResults(maxResults)
+
+	if pageToken != "" {
+		call = call.PageToken(pageToken)
+	}
 
 	resp, err := call.Context(ctx).Do()
 	if err != nil {
@@ -115,7 +140,7 @@ func (c *Client) FetchPlaylistVideos(ctx context.Context, playlistID string, max
 	}
 
 	if len(videoIDs) == 0 {
-		return nil, nil
+		return &FetchResult{Videos: nil, NextPageToken: ""}, nil
 	}
 
 	videoResp, err := c.service.Videos.List([]string{"snippet", "contentDetails"}).
@@ -137,7 +162,7 @@ func (c *Client) FetchPlaylistVideos(ctx context.Context, playlistID string, max
 			PublishedAt:  publishedAt,
 		})
 	}
-	return videos, nil
+	return &FetchResult{Videos: videos, NextPageToken: resp.NextPageToken}, nil
 }
 
 func getBestThumbnail(t *youtube.ThumbnailDetails) string {

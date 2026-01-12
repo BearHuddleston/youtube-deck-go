@@ -78,11 +78,11 @@ templ ColumnHeader(sub SubscriptionWithCount) {
 	</div>
 }
 
-templ ColumnVideos(videos []db.Video, subscriptionID int64, hasMore bool, nextOffset int64) {
+templ ColumnVideos(videos []db.Video, subscriptionID int64, hasMoreDB bool, canFetchMore bool, nextOffset int64) {
 	for _, video := range videos {
 		@ColumnVideoCard(video)
 	}
-	if len(videos) == 0 && nextOffset == 0 {
+	if len(videos) == 0 && nextOffset == 0 && !canFetchMore {
 		<div class="text-center py-8 text-zinc-500 text-sm">
 			<svg class="w-8 h-8 mx-auto mb-2 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -90,14 +90,27 @@ templ ColumnVideos(videos []db.Video, subscriptionID int64, hasMore bool, nextOf
 			No unwatched videos
 		</div>
 	}
-	if hasMore {
+	if hasMoreDB {
 		@ColumnLoadMore(subscriptionID, nextOffset)
+	} else if canFetchMore {
+		@ColumnFetchMore(subscriptionID)
 	}
 }
 
 templ ColumnLoadMore(subscriptionID int64, offset int64) {
 	<div
 		hx-get={ "/subscriptions/" + itoa(subscriptionID) + "/column?offset=" + itoa64(offset) }
+		hx-trigger="intersect once"
+		hx-swap="outerHTML"
+		class="flex items-center justify-center py-4"
+	>
+		<div class="w-5 h-5 border-2 border-zinc-600 border-t-zinc-300 rounded-full spinner"></div>
+	</div>
+}
+
+templ ColumnFetchMore(subscriptionID int64) {
+	<div
+		hx-post={ "/subscriptions/" + itoa(subscriptionID) + "/fetch-more" }
 		hx-trigger="intersect once"
 		hx-swap="outerHTML"
 		class="flex items-center justify-center py-4"
