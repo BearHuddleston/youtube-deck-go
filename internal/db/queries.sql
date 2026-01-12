@@ -114,3 +114,32 @@ UPDATE subscriptions SET page_token = ? WHERE id = ?;
 
 -- name: CountTotalVideos :one
 SELECT COUNT(*) FROM videos WHERE subscription_id = ?;
+
+-- name: UpdateSubscriptionHideShorts :exec
+UPDATE subscriptions SET hide_shorts = ? WHERE id = ?;
+
+-- name: ListUnwatchedVideosPaginatedFiltered :many
+SELECT * FROM videos
+WHERE subscription_id = ?
+  AND watched = 0
+  AND (? = 0 OR (
+    (duration IS NULL OR NOT (
+      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
+    ))
+    AND title NOT LIKE '%#shorts%'
+    AND title NOT LIKE '%#short%'
+  ))
+ORDER BY published_at DESC
+LIMIT ? OFFSET ?;
+
+-- name: CountUnwatchedBySubscriptionFiltered :one
+SELECT COUNT(*) FROM videos
+WHERE subscription_id = ?
+  AND watched = 0
+  AND (? = 0 OR (
+    (duration IS NULL OR NOT (
+      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
+    ))
+    AND title NOT LIKE '%#shorts%'
+    AND title NOT LIKE '%#short%'
+  ));

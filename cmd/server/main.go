@@ -85,6 +85,7 @@ func main() {
 	mux.HandleFunc("POST /subscriptions/{id}/refresh", h.HandleRefreshSubscription)
 	mux.HandleFunc("POST /subscriptions/{id}/fetch-more", h.HandleFetchMoreVideos)
 	mux.HandleFunc("PATCH /subscriptions/{id}/active", h.HandleToggleActive)
+	mux.HandleFunc("PATCH /subscriptions/{id}/hide-shorts", h.HandleToggleHideShorts)
 	mux.HandleFunc("POST /videos/{id}/watched", h.HandleToggleWatched)
 	mux.HandleFunc("GET /proxy/image", h.HandleImageProxy)
 
@@ -113,7 +114,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     position INTEGER DEFAULT 0,
     active INTEGER DEFAULT 0,
-    page_token TEXT
+    page_token TEXT,
+    hide_shorts INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS videos (
@@ -136,4 +138,5 @@ var migrations = []string{
 	"ALTER TABLE subscriptions ADD COLUMN position INTEGER DEFAULT 0",
 	"ALTER TABLE subscriptions ADD COLUMN active INTEGER DEFAULT 0",
 	"ALTER TABLE subscriptions ADD COLUMN page_token TEXT",
+	"ALTER TABLE subscriptions ADD COLUMN hide_shorts INTEGER DEFAULT 0",
 }

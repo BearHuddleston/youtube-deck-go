@@ -71,11 +71,23 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sub, err := h.queries.GetSubscription(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	offsetStr := r.URL.Query().Get("offset")
 	offset, _ := strconv.ParseInt(offsetStr, 10, 64)
 
-	videos, err := h.queries.ListUnwatchedVideosPaginated(r.Context(), db.ListUnwatchedVideosPaginatedParams{
+	hideShorts := int64(0)
+	if sub.HideShorts.Valid {
+		hideShorts = sub.HideShorts.Int64
+	}
+
+	videos, err := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
 		SubscriptionID: id,
+		Column2:        hideShorts,
 		Limit:          columnVideoPageSize + 1,
 		Offset:         offset,
 	})
@@ -91,12 +103,9 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 
 	canFetchMore := false
 	if !hasMoreDB {
-		sub, err := h.queries.GetSubscription(r.Context(), id)
-		if err == nil {
-			// Allow fetching more if we have a next page token OR if we haven't fetched yet (NULL token)
-			// Empty string "" means we've exhausted all pages
-			canFetchMore = !sub.PageToken.Valid || sub.PageToken.String != ""
-		}
+		// Allow fetching more if we have a next page token OR if we haven't fetched yet (NULL token)
+		// Empty string "" means we've exhausted all pages
+		canFetchMore = !sub.PageToken.Valid || sub.PageToken.String != ""
 	}
 
 	nextOffset := offset + int64(len(videos))
@@ -346,4 +355,40 @@ func (h *Handlers) HandleReorder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handlers) HandleToggleHideShorts(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	sub, err := h.queries.GetSubscription(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newValue := int64(1)
+	if sub.HideShorts.Valid && sub.HideShorts.Int64 == 1 {
+		newValue = 0
+	}
+
+	_ = h.queries.UpdateSubscriptionHideShorts(r.Context(), db.UpdateSubscriptionHideShortsParams{
+		HideShorts: sql.NullInt64{Int64: newValue, Valid: true},
+		ID:         id,
+	})
+
+	count, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+		SubscriptionID: id,
+		Column2:        newValue,
+	})
+
+	sub.HideShorts = sql.NullInt64{Int64: newValue, Valid: true}
+	_ = templates.Column(templates.SubscriptionWithCount{
+		Subscription:   sub,
+		UnwatchedCount: count,
+	}).Render(r.Context(), w)
 }

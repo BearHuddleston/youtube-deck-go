@@ -8,7 +8,8 @@ CREATE TABLE subscriptions (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     position INTEGER DEFAULT 0,
     active INTEGER DEFAULT 0,
-    page_token TEXT
+    page_token TEXT,
+    hide_shorts INTEGER DEFAULT 0
 );
 
 CREATE TABLE videos (

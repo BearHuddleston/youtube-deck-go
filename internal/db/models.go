@@ -19,6 +19,7 @@ type Subscription struct {
 	Position     sql.NullInt64  `json:"position"`
 	Active       sql.NullInt64  `json:"active"`
 	PageToken    sql.NullString `json:"page_token"`
+	HideShorts   sql.NullInt64  `json:"hide_shorts"`
 }
 
 type Video struct {

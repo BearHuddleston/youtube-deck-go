@@ -43,10 +43,35 @@ func (q *Queries) CountUnwatchedBySubscription(ctx context.Context, subscription
 	return count, err
 }
 
+const countUnwatchedBySubscriptionFiltered = `-- name: CountUnwatchedBySubscriptionFiltered :one
+SELECT COUNT(*) FROM videos
+WHERE subscription_id = ?
+  AND watched = 0
+  AND (? = 0 OR (
+    (duration IS NULL OR NOT (
+      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
+    ))
+    AND title NOT LIKE '%#shorts%'
+    AND title NOT LIKE '%#short%'
+  ))
+`
+
+type CountUnwatchedBySubscriptionFilteredParams struct {
+	SubscriptionID int64       `json:"subscription_id"`
+	Column2        interface{} `json:"column_2"`
+}
+
+func (q *Queries) CountUnwatchedBySubscriptionFiltered(ctx context.Context, arg CountUnwatchedBySubscriptionFilteredParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUnwatchedBySubscriptionFiltered, arg.SubscriptionID, arg.Column2)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSubscription = `-- name: CreateSubscription :one
 INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url, position, active)
 VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token
+RETURNING id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token, hide_shorts
 `
 
 type CreateSubscriptionParams struct {
@@ -79,6 +104,7 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		&i.Position,
 		&i.Active,
 		&i.PageToken,
+		&i.HideShorts,
 	)
 	return i, err
 }
@@ -132,7 +158,7 @@ func (q *Queries) DeleteSubscription(ctx context.Context, id int64) error {
 }
 
 const filterSubscriptions = `-- name: FilterSubscriptions :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 WHERE s.name LIKE '%' || ? || '%'
@@ -152,6 +178,7 @@ type FilterSubscriptionsRow struct {
 	Position       sql.NullInt64  `json:"position"`
 	Active         sql.NullInt64  `json:"active"`
 	PageToken      sql.NullString `json:"page_token"`
+	HideShorts     sql.NullInt64  `json:"hide_shorts"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -175,6 +202,7 @@ func (q *Queries) FilterSubscriptions(ctx context.Context, dollar_1 sql.NullStri
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -202,7 +230,7 @@ func (q *Queries) GetMaxPosition(ctx context.Context) (interface{}, error) {
 }
 
 const getSubscription = `-- name: GetSubscription :one
-SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token FROM subscriptions WHERE id = ?
+SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token, hide_shorts FROM subscriptions WHERE id = ?
 `
 
 func (q *Queries) GetSubscription(ctx context.Context, id int64) (Subscription, error) {
@@ -219,6 +247,7 @@ func (q *Queries) GetSubscription(ctx context.Context, id int64) (Subscription, 
 		&i.Position,
 		&i.Active,
 		&i.PageToken,
+		&i.HideShorts,
 	)
 	return i, err
 }
@@ -245,7 +274,7 @@ func (q *Queries) GetVideo(ctx context.Context, id int64) (Video, error) {
 }
 
 const listActiveSubscriptions = `-- name: ListActiveSubscriptions :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 WHERE s.active = 1
@@ -264,6 +293,7 @@ type ListActiveSubscriptionsRow struct {
 	Position       sql.NullInt64  `json:"position"`
 	Active         sql.NullInt64  `json:"active"`
 	PageToken      sql.NullString `json:"page_token"`
+	HideShorts     sql.NullInt64  `json:"hide_shorts"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -287,6 +317,7 @@ func (q *Queries) ListActiveSubscriptions(ctx context.Context) ([]ListActiveSubs
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -303,7 +334,7 @@ func (q *Queries) ListActiveSubscriptions(ctx context.Context) ([]ListActiveSubs
 }
 
 const listAllSubscriptionsOrdered = `-- name: ListAllSubscriptionsOrdered :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
@@ -321,6 +352,7 @@ type ListAllSubscriptionsOrderedRow struct {
 	Position       sql.NullInt64  `json:"position"`
 	Active         sql.NullInt64  `json:"active"`
 	PageToken      sql.NullString `json:"page_token"`
+	HideShorts     sql.NullInt64  `json:"hide_shorts"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -344,6 +376,7 @@ func (q *Queries) ListAllSubscriptionsOrdered(ctx context.Context) ([]ListAllSub
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -360,7 +393,7 @@ func (q *Queries) ListAllSubscriptionsOrdered(ctx context.Context) ([]ListAllSub
 }
 
 const listSubscriptions = `-- name: ListSubscriptions :many
-SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token FROM subscriptions ORDER BY name
+SELECT id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token, hide_shorts FROM subscriptions ORDER BY name
 `
 
 func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error) {
@@ -383,6 +416,7 @@ func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error)
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 		); err != nil {
 			return nil, err
 		}
@@ -398,7 +432,7 @@ func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error)
 }
 
 const listSubscriptionsPaginated = `-- name: ListSubscriptionsPaginated :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
@@ -422,6 +456,7 @@ type ListSubscriptionsPaginatedRow struct {
 	Position       sql.NullInt64  `json:"position"`
 	Active         sql.NullInt64  `json:"active"`
 	PageToken      sql.NullString `json:"page_token"`
+	HideShorts     sql.NullInt64  `json:"hide_shorts"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -445,6 +480,7 @@ func (q *Queries) ListSubscriptionsPaginated(ctx context.Context, arg ListSubscr
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -461,7 +497,7 @@ func (q *Queries) ListSubscriptionsPaginated(ctx context.Context, arg ListSubscr
 }
 
 const listSubscriptionsWithUnwatchedCount = `-- name: ListSubscriptionsWithUnwatchedCount :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
@@ -479,6 +515,7 @@ type ListSubscriptionsWithUnwatchedCountRow struct {
 	Position       sql.NullInt64  `json:"position"`
 	Active         sql.NullInt64  `json:"active"`
 	PageToken      sql.NullString `json:"page_token"`
+	HideShorts     sql.NullInt64  `json:"hide_shorts"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -502,6 +539,7 @@ func (q *Queries) ListSubscriptionsWithUnwatchedCount(ctx context.Context) ([]Li
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -600,6 +638,66 @@ func (q *Queries) ListUnwatchedVideosPaginated(ctx context.Context, arg ListUnwa
 	return items, nil
 }
 
+const listUnwatchedVideosPaginatedFiltered = `-- name: ListUnwatchedVideosPaginatedFiltered :many
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos
+WHERE subscription_id = ?
+  AND watched = 0
+  AND (? = 0 OR (
+    (duration IS NULL OR NOT (
+      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
+    ))
+    AND title NOT LIKE '%#shorts%'
+    AND title NOT LIKE '%#short%'
+  ))
+ORDER BY published_at DESC
+LIMIT ? OFFSET ?
+`
+
+type ListUnwatchedVideosPaginatedFilteredParams struct {
+	SubscriptionID int64       `json:"subscription_id"`
+	Column2        interface{} `json:"column_2"`
+	Limit          int64       `json:"limit"`
+	Offset         int64       `json:"offset"`
+}
+
+func (q *Queries) ListUnwatchedVideosPaginatedFiltered(ctx context.Context, arg ListUnwatchedVideosPaginatedFilteredParams) ([]Video, error) {
+	rows, err := q.db.QueryContext(ctx, listUnwatchedVideosPaginatedFiltered,
+		arg.SubscriptionID,
+		arg.Column2,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Video{}
+	for rows.Next() {
+		var i Video
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionID,
+			&i.YoutubeID,
+			&i.Title,
+			&i.ThumbnailUrl,
+			&i.Duration,
+			&i.PublishedAt,
+			&i.Watched,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVideos = `-- name: ListVideos :many
 SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos WHERE subscription_id = ? ORDER BY published_at DESC
 `
@@ -656,7 +754,7 @@ func (q *Queries) MarkWatched(ctx context.Context, id int64) error {
 }
 
 const subscriptionsWithUnwatchedCount = `-- name: SubscriptionsWithUnwatchedCount :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
 LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
@@ -674,6 +772,7 @@ type SubscriptionsWithUnwatchedCountRow struct {
 	Position       sql.NullInt64  `json:"position"`
 	Active         sql.NullInt64  `json:"active"`
 	PageToken      sql.NullString `json:"page_token"`
+	HideShorts     sql.NullInt64  `json:"hide_shorts"`
 	UnwatchedCount int64          `json:"unwatched_count"`
 }
 
@@ -697,6 +796,7 @@ func (q *Queries) SubscriptionsWithUnwatchedCount(ctx context.Context) ([]Subscr
 			&i.Position,
 			&i.Active,
 			&i.PageToken,
+			&i.HideShorts,
 			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
@@ -754,6 +854,20 @@ UPDATE subscriptions SET last_checked = CURRENT_TIMESTAMP WHERE id = ?
 
 func (q *Queries) UpdateSubscriptionChecked(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, updateSubscriptionChecked, id)
+	return err
+}
+
+const updateSubscriptionHideShorts = `-- name: UpdateSubscriptionHideShorts :exec
+UPDATE subscriptions SET hide_shorts = ? WHERE id = ?
+`
+
+type UpdateSubscriptionHideShortsParams struct {
+	HideShorts sql.NullInt64 `json:"hide_shorts"`
+	ID         int64         `json:"id"`
+}
+
+func (q *Queries) UpdateSubscriptionHideShorts(ctx context.Context, arg UpdateSubscriptionHideShortsParams) error {
+	_, err := q.db.ExecContext(ctx, updateSubscriptionHideShorts, arg.HideShorts, arg.ID)
 	return err
 }
 
