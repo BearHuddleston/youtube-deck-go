@@ -118,7 +118,15 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 
 	_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
 
-	unwatchedCount, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
+	hideShorts := int64(0)
+	if sub.HideShorts.Valid {
+		hideShorts = sub.HideShorts.Int64
+	}
+
+	unwatchedCount, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+		SubscriptionID: id,
+		Column2:        hideShorts,
+	})
 
 	swc := templates.SubscriptionWithCount{
 		Subscription:   sub,
@@ -126,7 +134,20 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 	}
 
 	if sub.Active.Valid && sub.Active.Int64 == 1 {
-		_ = templates.Column(swc).Render(r.Context(), w)
+		videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+			SubscriptionID: id,
+			Column2:        hideShorts,
+			Limit:          11,
+			Offset:         0,
+		})
+
+		hasMoreDB := len(videos) > 10
+		if hasMoreDB {
+			videos = videos[:10]
+		}
+
+		canFetchMore := !sub.PageToken.Valid || sub.PageToken.String != ""
+		_ = templates.ColumnWithVideos(swc, videos, hasMoreDB, canFetchMore, int64(len(videos))).Render(r.Context(), w)
 	} else {
 		_ = templates.SubscriptionCard(swc).Render(r.Context(), w)
 	}
