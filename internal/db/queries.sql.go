@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const countActiveSubscriptions = `-- name: CountActiveSubscriptions :one
+SELECT COUNT(*) FROM subscriptions WHERE active = 1
+`
+
+func (q *Queries) CountActiveSubscriptions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveSubscriptions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUnwatchedBySubscription = `-- name: CountUnwatchedBySubscription :one
 SELECT COUNT(*) FROM videos WHERE subscription_id = ? AND watched = 0
 `

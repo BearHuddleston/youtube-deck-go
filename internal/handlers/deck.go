@@ -118,11 +118,12 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
 
+		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())
 		count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
-		_ = templates.Column(templates.SubscriptionWithCount{
+		_ = templates.ColumnWithChip(templates.SubscriptionWithCount{
 			Subscription:   sub,
 			UnwatchedCount: count,
-		}).Render(r.Context(), w)
+		}, activeCount == 1).Render(r.Context(), w)
 	} else {
 		rows, err := h.queries.ListAllSubscriptionsOrdered(r.Context())
 		if err != nil {

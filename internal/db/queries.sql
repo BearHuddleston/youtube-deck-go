@@ -99,3 +99,6 @@ LEFT JOIN videos v ON v.subscription_id = s.id
 GROUP BY s.id
 ORDER BY s.position, s.name
 LIMIT ? OFFSET ?;
+
+-- name: CountActiveSubscriptions :one
+SELECT COUNT(*) FROM subscriptions WHERE active = 1;
