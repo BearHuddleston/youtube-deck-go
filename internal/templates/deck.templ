@@ -4,10 +4,10 @@ func isActive(sub SubscriptionWithCount) bool {
 	return sub.Active.Valid && sub.Active.Int64 == 1
 }
 
-templ Deck(allSubs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, isAuthenticated bool) {
+templ Deck(allSubs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, hasMore bool, nextOffset int64, isAuthenticated bool) {
 	@DeckLayout("Deck", isAuthenticated) {
 		<div class="flex h-full" x-data="{ sidebarOpen: true }">
-			@Sidebar(allSubs)
+			@Sidebar(allSubs, hasMore, nextOffset)
 			<div class="flex-1 deck-scroll">
 				<div id="deck-columns" class="flex gap-4 p-4 h-full">
 					for _, sub := range activeSubs {
@@ -37,12 +37,12 @@ templ DeckEmptyState() {
 	</div>
 }
 
-templ Sidebar(subs []SubscriptionWithCount) {
+templ Sidebar(subs []SubscriptionWithCount, hasMore bool, nextOffset int64) {
 	<aside
 		class="bg-zinc-900 border-r border-zinc-800 sidebar-transition overflow-hidden flex flex-col"
 		:class="sidebarOpen ? 'w-64' : 'w-0'"
 	>
-		<div class="flex-1 overflow-y-auto" x-show="sidebarOpen" x-cloak>
+		<div class="flex-1 overflow-y-auto flex flex-col" x-show="sidebarOpen" x-cloak>
 			<div class="flex items-center justify-between p-3 border-b border-zinc-800">
 				<h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Subscriptions</h2>
 				<button
@@ -54,15 +54,24 @@ templ Sidebar(subs []SubscriptionWithCount) {
 					</svg>
 				</button>
 			</div>
-			<div id="sidebar-list" class="p-2 space-y-1">
-				for _, sub := range subs {
-					@SidebarItem(sub)
-				}
-				if len(subs) == 0 {
-					<div class="text-center py-8 text-zinc-500 text-sm">
-						No subscriptions yet
-					</div>
-				}
+			<div class="p-2 border-b border-zinc-800">
+				<div class="relative">
+					<svg class="w-4 h-4 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+					</svg>
+					<input
+						type="text"
+						name="q"
+						placeholder="Filter subscriptions..."
+						hx-get="/subscriptions/filter"
+						hx-trigger="input changed delay:200ms, search"
+						hx-target="#sidebar-list"
+						class="w-full bg-zinc-800 text-zinc-200 text-sm rounded-lg pl-8 pr-3 py-1.5 border border-zinc-700 focus:border-zinc-600 focus:outline-none placeholder-zinc-500"
+					/>
+				</div>
+			</div>
+			<div id="sidebar-list" class="p-2 space-y-1 flex-1 overflow-y-auto">
+				@SidebarList(subs, hasMore, nextOffset)
 			</div>
 		</div>
 	</aside>
@@ -130,7 +139,7 @@ templ SidebarItem(sub SubscriptionWithCount) {
 	</div>
 }
 
-templ SidebarList(subs []SubscriptionWithCount) {
+templ SidebarList(subs []SubscriptionWithCount, hasMore bool, nextOffset int64) {
 	for _, sub := range subs {
 		@SidebarItem(sub)
 	}
@@ -139,6 +148,20 @@ templ SidebarList(subs []SubscriptionWithCount) {
 			No subscriptions yet
 		</div>
 	}
+	if hasMore {
+		@SidebarLoadMore(nextOffset)
+	}
+}
+
+templ SidebarLoadMore(offset int64) {
+	<div
+		hx-get={ "/subscriptions/filter?offset=" + itoa64(offset) }
+		hx-trigger="intersect once"
+		hx-swap="outerHTML"
+		class="flex items-center justify-center py-4"
+	>
+		<div class="w-5 h-5 border-2 border-zinc-600 border-t-zinc-300 rounded-full spinner"></div>
+	</div>
 }
 
 templ DeckScripts() {

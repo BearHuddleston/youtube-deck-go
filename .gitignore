@@ -5,6 +5,7 @@ client_secret*.json
 
 # Build
 bin/
+tmp/
 /server
 
 # Generated

@@ -82,3 +82,20 @@ UPDATE subscriptions SET position = ? WHERE id = ?;
 
 -- name: GetMaxPosition :one
 SELECT COALESCE(MAX(position), 0) as max_position FROM subscriptions;
+
+-- name: FilterSubscriptions :many
+SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+WHERE s.name LIKE '%' || ? || '%'
+GROUP BY s.id
+ORDER BY s.position, s.name
+LIMIT 50;
+
+-- name: ListSubscriptionsPaginated :many
+SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+GROUP BY s.id
+ORDER BY s.position, s.name
+LIMIT ? OFFSET ?;

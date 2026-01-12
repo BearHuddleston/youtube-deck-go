@@ -2,6 +2,7 @@
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
+AIR ?= $(shell go env GOPATH)/bin/air
 
 build: generate
 	$(GO) build -o bin/server ./cmd/server
@@ -9,8 +10,8 @@ build: generate
 run: build
 	./bin/server
 
-dev: generate
-	$(GO) run ./cmd/server
+dev:
+	$(AIR)
 
 generate: generate-templ generate-sqlc
 

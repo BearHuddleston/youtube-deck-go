@@ -108,6 +108,63 @@ func (q *Queries) DeleteSubscription(ctx context.Context, id int64) error {
 	return err
 }
 
+const filterSubscriptions = `-- name: FilterSubscriptions :many
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+WHERE s.name LIKE '%' || ? || '%'
+GROUP BY s.id
+ORDER BY s.position, s.name
+LIMIT 50
+`
+
+type FilterSubscriptionsRow struct {
+	ID             int64          `json:"id"`
+	Name           string         `json:"name"`
+	YoutubeID      string         `json:"youtube_id"`
+	Type           string         `json:"type"`
+	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
+	LastChecked    sql.NullTime   `json:"last_checked"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	Position       sql.NullInt64  `json:"position"`
+	Active         sql.NullInt64  `json:"active"`
+	UnwatchedCount int64          `json:"unwatched_count"`
+}
+
+func (q *Queries) FilterSubscriptions(ctx context.Context, dollar_1 sql.NullString) ([]FilterSubscriptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, filterSubscriptions, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FilterSubscriptionsRow{}
+	for rows.Next() {
+		var i FilterSubscriptionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.YoutubeID,
+			&i.Type,
+			&i.ThumbnailUrl,
+			&i.LastChecked,
+			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
+			&i.UnwatchedCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMaxPosition = `-- name: GetMaxPosition :one
 SELECT COALESCE(MAX(position), 0) as max_position FROM subscriptions
 `
@@ -295,6 +352,67 @@ func (q *Queries) ListSubscriptions(ctx context.Context) ([]Subscription, error)
 			&i.CreatedAt,
 			&i.Position,
 			&i.Active,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSubscriptionsPaginated = `-- name: ListSubscriptionsPaginated :many
+SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
+FROM subscriptions s
+LEFT JOIN videos v ON v.subscription_id = s.id
+GROUP BY s.id
+ORDER BY s.position, s.name
+LIMIT ? OFFSET ?
+`
+
+type ListSubscriptionsPaginatedParams struct {
+	Limit  int64 `json:"limit"`
+	Offset int64 `json:"offset"`
+}
+
+type ListSubscriptionsPaginatedRow struct {
+	ID             int64          `json:"id"`
+	Name           string         `json:"name"`
+	YoutubeID      string         `json:"youtube_id"`
+	Type           string         `json:"type"`
+	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
+	LastChecked    sql.NullTime   `json:"last_checked"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	Position       sql.NullInt64  `json:"position"`
+	Active         sql.NullInt64  `json:"active"`
+	UnwatchedCount int64          `json:"unwatched_count"`
+}
+
+func (q *Queries) ListSubscriptionsPaginated(ctx context.Context, arg ListSubscriptionsPaginatedParams) ([]ListSubscriptionsPaginatedRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSubscriptionsPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSubscriptionsPaginatedRow{}
+	for rows.Next() {
+		var i ListSubscriptionsPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.YoutubeID,
+			&i.Type,
+			&i.ThumbnailUrl,
+			&i.LastChecked,
+			&i.CreatedAt,
+			&i.Position,
+			&i.Active,
+			&i.UnwatchedCount,
 		); err != nil {
 			return nil, err
 		}

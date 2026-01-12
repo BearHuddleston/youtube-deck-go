@@ -11,10 +11,18 @@ import (
 )
 
 func (h *Handlers) HandleDeck(w http.ResponseWriter, r *http.Request) {
-	allRows, err := h.queries.ListAllSubscriptionsOrdered(r.Context())
+	sidebarRows, err := h.queries.ListSubscriptionsPaginated(r.Context(), db.ListSubscriptionsPaginatedParams{
+		Limit:  sidebarPageSize + 1,
+		Offset: 0,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	hasMore := len(sidebarRows) > sidebarPageSize
+	if hasMore {
+		sidebarRows = sidebarRows[:sidebarPageSize]
 	}
 
 	activeRows, err := h.queries.ListActiveSubscriptions(r.Context())
@@ -23,44 +31,33 @@ func (h *Handlers) HandleDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allSubs := make([]templates.SubscriptionWithCount, len(allRows))
-	for i, row := range allRows {
-		allSubs[i] = templates.SubscriptionWithCount{
-			Subscription: db.Subscription{
-				ID:           row.ID,
-				Name:         row.Name,
-				YoutubeID:    row.YoutubeID,
-				Type:         row.Type,
-				ThumbnailUrl: row.ThumbnailUrl,
-				LastChecked:  row.LastChecked,
-				CreatedAt:    row.CreatedAt,
-				Position:     row.Position,
-				Active:       row.Active,
-			},
-			UnwatchedCount: row.UnwatchedCount,
-		}
-	}
-
-	activeSubs := make([]templates.SubscriptionWithCount, len(activeRows))
-	for i, row := range activeRows {
-		activeSubs[i] = templates.SubscriptionWithCount{
-			Subscription: db.Subscription{
-				ID:           row.ID,
-				Name:         row.Name,
-				YoutubeID:    row.YoutubeID,
-				Type:         row.Type,
-				ThumbnailUrl: row.ThumbnailUrl,
-				LastChecked:  row.LastChecked,
-				CreatedAt:    row.CreatedAt,
-				Position:     row.Position,
-				Active:       row.Active,
-			},
-			UnwatchedCount: row.UnwatchedCount,
-		}
-	}
+	sidebarSubs := h.rowsToSubs(sidebarRows)
+	activeSubs := h.activeRowsToSubs(activeRows)
+	nextOffset := int64(len(sidebarSubs))
 
 	isAuth := h.auth != nil && h.auth.IsAuthenticated()
-	_ = templates.Deck(allSubs, activeSubs, isAuth).Render(r.Context(), w)
+	_ = templates.Deck(sidebarSubs, activeSubs, hasMore, nextOffset, isAuth).Render(r.Context(), w)
+}
+
+func (h *Handlers) activeRowsToSubs(rows []db.ListActiveSubscriptionsRow) []templates.SubscriptionWithCount {
+	subs := make([]templates.SubscriptionWithCount, len(rows))
+	for i, row := range rows {
+		subs[i] = templates.SubscriptionWithCount{
+			Subscription: db.Subscription{
+				ID:           row.ID,
+				Name:         row.Name,
+				YoutubeID:    row.YoutubeID,
+				Type:         row.Type,
+				ThumbnailUrl: row.ThumbnailUrl,
+				LastChecked:  row.LastChecked,
+				CreatedAt:    row.CreatedAt,
+				Position:     row.Position,
+				Active:       row.Active,
+			},
+			UnwatchedCount: row.UnwatchedCount,
+		}
+	}
+	return subs
 }
 
 func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +135,85 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+const sidebarPageSize = 50
+
+func (h *Handlers) HandleFilterSubscriptions(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	offsetStr := r.URL.Query().Get("offset")
+	offset, _ := strconv.ParseInt(offsetStr, 10, 64)
+
+	if q != "" {
+		rows, err := h.queries.FilterSubscriptions(r.Context(), sql.NullString{String: q, Valid: true})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		subs := h.filterRowsToSubs(rows)
+		_ = templates.SidebarList(subs, false, 0).Render(r.Context(), w)
+		return
+	}
+
+	rows, err := h.queries.ListSubscriptionsPaginated(r.Context(), db.ListSubscriptionsPaginatedParams{
+		Limit:  sidebarPageSize + 1,
+		Offset: offset,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	hasMore := len(rows) > sidebarPageSize
+	if hasMore {
+		rows = rows[:sidebarPageSize]
+	}
+
+	subs := h.rowsToSubs(rows)
+	nextOffset := offset + int64(len(subs))
+	_ = templates.SidebarList(subs, hasMore, nextOffset).Render(r.Context(), w)
+}
+
+func (h *Handlers) rowsToSubs(rows []db.ListSubscriptionsPaginatedRow) []templates.SubscriptionWithCount {
+	subs := make([]templates.SubscriptionWithCount, len(rows))
+	for i, row := range rows {
+		subs[i] = templates.SubscriptionWithCount{
+			Subscription: db.Subscription{
+				ID:           row.ID,
+				Name:         row.Name,
+				YoutubeID:    row.YoutubeID,
+				Type:         row.Type,
+				ThumbnailUrl: row.ThumbnailUrl,
+				LastChecked:  row.LastChecked,
+				CreatedAt:    row.CreatedAt,
+				Position:     row.Position,
+				Active:       row.Active,
+			},
+			UnwatchedCount: row.UnwatchedCount,
+		}
+	}
+	return subs
+}
+
+func (h *Handlers) filterRowsToSubs(rows []db.FilterSubscriptionsRow) []templates.SubscriptionWithCount {
+	subs := make([]templates.SubscriptionWithCount, len(rows))
+	for i, row := range rows {
+		subs[i] = templates.SubscriptionWithCount{
+			Subscription: db.Subscription{
+				ID:           row.ID,
+				Name:         row.Name,
+				YoutubeID:    row.YoutubeID,
+				Type:         row.Type,
+				ThumbnailUrl: row.ThumbnailUrl,
+				LastChecked:  row.LastChecked,
+				CreatedAt:    row.CreatedAt,
+				Position:     row.Position,
+				Active:       row.Active,
+			},
+			UnwatchedCount: row.UnwatchedCount,
+		}
+	}
+	return subs
 }
 
 func (h *Handlers) HandleReorder(w http.ResponseWriter, r *http.Request) {
