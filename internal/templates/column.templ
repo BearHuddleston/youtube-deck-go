@@ -41,11 +41,13 @@ templ ColumnHeader(sub SubscriptionWithCount) {
 			</div>
 		}
 		<span class="flex-1 font-medium text-sm text-zinc-200 truncate">{ sub.Name }</span>
-		if sub.UnwatchedCount > 0 {
-			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
-				{ itoa64(sub.UnwatchedCount) }
-			</span>
-		}
+		<span id={ "col-count-" + itoa(sub.ID) }>
+			if sub.UnwatchedCount > 0 {
+				<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+					{ itoa64(sub.UnwatchedCount) }
+				</span>
+			}
+		</span>
 		<button
 			hx-post={ "/subscriptions/" + itoa(sub.ID) + "/refresh" }
 			hx-target={ "#column-" + itoa(sub.ID) }
@@ -68,6 +70,7 @@ templ ColumnHeader(sub SubscriptionWithCount) {
 			hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=0" }
 			hx-target={ "#column-" + itoa(sub.ID) }
 			hx-swap="delete"
+			hx-on::after-request="document.getElementById('active-chip-' + this.closest('[data-id]').dataset.id)?.remove(); updateActiveSection()"
 			class="p-1 hover:bg-red-600 rounded transition-colors"
 			title="Close column"
 		>
@@ -117,6 +120,16 @@ templ ColumnFetchMore(subscriptionID int64) {
 	>
 		<div class="w-5 h-5 border-2 border-zinc-600 border-t-zinc-300 rounded-full spinner"></div>
 	</div>
+}
+
+templ ColumnCountOOB(subscriptionID int64, count int64) {
+	<span id={ "col-count-" + itoa(subscriptionID) } hx-swap-oob="true">
+		if count > 0 {
+			<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+				{ itoa64(count) }
+			</span>
+		}
+	</span>
 }
 
 templ ColumnVideoCard(video db.Video) {

@@ -38,11 +38,14 @@ func (h *Handlers) HandleToggleWatched(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	video, err := h.queries.ToggleWatched(r.Context(), id)
+	video, err := h.queries.GetVideo(r.Context(), id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_ = templates.VideoCard(video).Render(r.Context(), w)
+	_ = h.queries.MarkWatched(r.Context(), id)
+
+	count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), video.SubscriptionID)
+	_ = templates.ColumnCountOOB(video.SubscriptionID, count).Render(r.Context(), w)
 }
