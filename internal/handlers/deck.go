@@ -103,6 +103,21 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// Fetch videos from YouTube when adding to deck
+		if sub.Type == "channel" {
+			vids, err := h.yt.FetchChannelVideos(r.Context(), sub.YoutubeID, 20)
+			if err == nil {
+				_ = h.saveVideos(r, sub.ID, vids)
+			}
+		} else {
+			vids, err := h.yt.FetchPlaylistVideos(r.Context(), sub.YoutubeID, 20)
+			if err == nil {
+				_ = h.saveVideos(r, sub.ID, vids)
+			}
+		}
+		_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
+
 		count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
 		_ = templates.Column(templates.SubscriptionWithCount{
 			Subscription:   sub,
