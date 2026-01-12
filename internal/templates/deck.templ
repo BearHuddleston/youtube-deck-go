@@ -24,7 +24,7 @@ templ Deck(allSubs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, 
 }
 
 templ DeckEmptyState() {
-	<div class="flex flex-col items-center justify-center flex-1 text-center p-8">
+	<div id="deck-empty-state" class="flex flex-col items-center justify-center flex-1 text-center p-8">
 		<div class="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
 			<svg class="w-10 h-10 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
@@ -206,6 +206,7 @@ templ ActiveColumnChipOOB(sub SubscriptionWithCount, activeCount int64) {
 				@ActiveColumnChip(sub)
 			</div>
 		</div>
+		<div id="deck-empty-state" hx-swap-oob="delete"></div>
 	}
 }
 
