@@ -89,13 +89,12 @@ func (m *Manager) SaveToken(path string) error {
 		return nil
 	}
 
-	f, err := os.Create(path)
+	data, err := json.Marshal(m.token)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	return json.NewEncoder(f).Encode(m.token)
+	return os.WriteFile(path, data, 0600)
 }
 
 func (m *Manager) LoadToken(path string) error {

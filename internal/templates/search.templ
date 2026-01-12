@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"encoding/json"
 	"net/url"
 
 	"youtube-deck-go/internal/youtube"
@@ -111,13 +112,14 @@ templ SearchResultItem(r youtube.SearchResult) {
 		</div>
 		<button
 			hx-post="/subscriptions"
-			hx-vals={ `{"youtube_id":"` + r.ID + `","name":"` + escapeJSON(r.Title) + `","type":"` + r.Type + `","thumbnail_url":"` + r.ThumbnailURL + `"}` }
+			hx-vals={ searchResultJSON(r) }
 			hx-target="#sidebar-list"
 			hx-swap="beforeend"
 			hx-on::after-request="document.getElementById('modal').innerHTML=''"
 			class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+			aria-label={ "Add " + r.Title + " to subscriptions" }
 		>
-			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
 			</svg>
 			Add
@@ -128,25 +130,15 @@ templ SearchResultItem(r youtube.SearchResult) {
 templ SearchClose() {
 }
 
-func escapeJSON(s string) string {
-	var result string
-	for _, c := range s {
-		switch c {
-		case '"':
-			result += `\"`
-		case '\\':
-			result += `\\`
-		case '\n':
-			result += `\n`
-		case '\r':
-			result += `\r`
-		case '\t':
-			result += `\t`
-		default:
-			result += string(c)
-		}
+func searchResultJSON(r youtube.SearchResult) string {
+	data := map[string]string{
+		"youtube_id":    r.ID,
+		"name":          r.Title,
+		"type":          r.Type,
+		"thumbnail_url": r.ThumbnailURL,
 	}
-	return result
+	b, _ := json.Marshal(data)
+	return string(b)
 }
 
 func searchProxyURL(imgURL string) string {

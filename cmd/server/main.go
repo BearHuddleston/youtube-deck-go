@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"youtube-deck-go/internal/auth"
 	"youtube-deck-go/internal/db"
 	"youtube-deck-go/internal/handlers"
+	"youtube-deck-go/internal/middleware"
 	"youtube-deck-go/internal/youtube"
 
 	_ "modernc.org/sqlite"
@@ -46,7 +51,11 @@ func main() {
 	}
 
 	for _, stmt := range migrations {
-		_, _ = database.Exec(stmt)
+		if _, err := database.Exec(stmt); err != nil {
+			if !isAlterTableDuplicate(err) {
+				log.Printf("migration warning: %v", err)
+			}
+		}
 	}
 
 	queries := db.New(database)
@@ -97,10 +106,55 @@ func main() {
 		mux.HandleFunc("POST /import", authH.HandleImportSubscriptions)
 	}
 
-	log.Printf("Server starting on http://localhost:%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatal(err)
+	handler := middleware.CSRF(mux)
+
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: handler,
 	}
+
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("Server starting on http://localhost:%s", port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	<-done
+	log.Println("Server shutting down...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("server shutdown failed: %v", err)
+	}
+
+	if err := database.Close(); err != nil {
+		log.Printf("database close error: %v", err)
+	}
+
+	log.Println("Server stopped")
+}
+
+func isAlterTableDuplicate(err error) bool {
+	return err != nil && (contains(err.Error(), "duplicate column") || contains(err.Error(), "already exists"))
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr))
+}
+
+func containsAt(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 const schema = `
@@ -133,6 +187,7 @@ CREATE TABLE IF NOT EXISTS videos (
 
 CREATE INDEX IF NOT EXISTS idx_videos_subscription ON videos(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_videos_watched ON videos(watched);
+CREATE INDEX IF NOT EXISTS idx_videos_sub_watched_short ON videos(subscription_id, watched, is_short);
 `
 
 var migrations = []string{
@@ -141,4 +196,5 @@ var migrations = []string{
 	"ALTER TABLE subscriptions ADD COLUMN page_token TEXT",
 	"ALTER TABLE subscriptions ADD COLUMN hide_shorts INTEGER DEFAULT 0",
 	"ALTER TABLE videos ADD COLUMN is_short INTEGER DEFAULT 0",
+	"CREATE INDEX IF NOT EXISTS idx_videos_sub_watched_short ON videos(subscription_id, watched, is_short)",
 }

@@ -17,13 +17,13 @@ func (h *Handlers) HandleVideos(w http.ResponseWriter, r *http.Request) {
 
 	sub, err := h.queries.GetSubscription(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "subscription not found", http.StatusNotFound)
 		return
 	}
 
 	videos, err := h.queries.ListVideos(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (h *Handlers) HandleToggleWatched(w http.ResponseWriter, r *http.Request) {
 
 	video, err := h.queries.GetVideo(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "video not found", http.StatusNotFound)
 		return
 	}
 

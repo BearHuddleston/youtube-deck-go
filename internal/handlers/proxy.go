@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,7 @@ func (h *Handlers) HandleImageProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !strings.HasPrefix(url, "https://yt") && !strings.HasPrefix(url, "https://i.ytimg.com") {
+	if !isValidYouTubeImageURL(url) {
 		http.Error(w, "invalid url", http.StatusBadRequest)
 		return
 	}
@@ -62,4 +63,33 @@ func (h *Handlers) HandleImageProxy(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.Header().Set("Cache-Control", "public, max-age=604800")
 	_, _ = w.Write(data)
+}
+
+func isValidYouTubeImageURL(rawURL string) bool {
+	parsed, err := neturl.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	if parsed.Scheme != "https" {
+		return false
+	}
+
+	host := strings.ToLower(parsed.Host)
+	validHosts := []string{
+		"i.ytimg.com",
+		"i1.ytimg.com",
+		"i2.ytimg.com",
+		"i3.ytimg.com",
+		"i4.ytimg.com",
+		"yt3.ggpht.com",
+		"yt3.googleusercontent.com",
+	}
+
+	for _, valid := range validHosts {
+		if host == valid {
+			return true
+		}
+	}
+	return false
 }

@@ -216,12 +216,12 @@ func (q *Queries) FilterSubscriptions(ctx context.Context, dollar_1 sql.NullStri
 }
 
 const getMaxPosition = `-- name: GetMaxPosition :one
-SELECT COALESCE(MAX(position), 0) as max_position FROM subscriptions
+SELECT CAST(COALESCE(MAX(position), 0) AS INTEGER) as max_position FROM subscriptions
 `
 
-func (q *Queries) GetMaxPosition(ctx context.Context) (interface{}, error) {
+func (q *Queries) GetMaxPosition(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getMaxPosition)
-	var max_position interface{}
+	var max_position int64
 	err := row.Scan(&max_position)
 	return max_position, err
 }

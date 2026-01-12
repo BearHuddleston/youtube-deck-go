@@ -10,7 +10,7 @@ import (
 func (h *Handlers) HandleHome(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.queries.SubscriptionsWithUnwatchedCount(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 

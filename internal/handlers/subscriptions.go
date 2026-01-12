@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -19,15 +20,11 @@ func (h *Handlers) HandleAddSubscription(w http.ResponseWriter, r *http.Request)
 		ThumbnailURL string `json:"thumbnail_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
-	maxPosRaw, _ := h.queries.GetMaxPosition(r.Context())
-	var maxPos int64
-	if v, ok := maxPosRaw.(int64); ok {
-		maxPos = v
-	}
+	maxPos, _ := h.queries.GetMaxPosition(r.Context())
 
 	sub, err := h.queries.CreateSubscription(r.Context(), db.CreateSubscriptionParams{
 		YoutubeID:    req.YoutubeID,
@@ -38,7 +35,7 @@ func (h *Handlers) HandleAddSubscription(w http.ResponseWriter, r *http.Request)
 		Active:       sql.NullInt64{Int64: 0, Valid: true},
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -46,17 +43,23 @@ func (h *Handlers) HandleAddSubscription(w http.ResponseWriter, r *http.Request)
 	if req.Type == "channel" {
 		vids, err := h.yt.FetchChannelVideos(r.Context(), req.YoutubeID, 20)
 		if err == nil {
-			_ = h.saveVideos(r, sub.ID, vids)
+			if err := h.saveVideos(r, sub.ID, vids); err != nil {
+				log.Printf("save videos error: %v", err)
+			}
 			unwatchedCount = int64(len(vids))
 		}
 	} else {
 		vids, err := h.yt.FetchPlaylistVideos(r.Context(), req.YoutubeID, 20)
 		if err == nil {
-			_ = h.saveVideos(r, sub.ID, vids)
+			if err := h.saveVideos(r, sub.ID, vids); err != nil {
+				log.Printf("save videos error: %v", err)
+			}
 			unwatchedCount = int64(len(vids))
 		}
 	}
-	_ = h.queries.UpdateSubscriptionChecked(r.Context(), sub.ID)
+	if err := h.queries.UpdateSubscriptionChecked(r.Context(), sub.ID); err != nil {
+		log.Printf("update subscription checked error: %v", err)
+	}
 
 	_ = templates.SidebarItem(templates.SubscriptionWithCount{
 		Subscription:   sub,
@@ -73,7 +76,7 @@ func (h *Handlers) HandleDeleteSubscription(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := h.queries.DeleteSubscription(r.Context(), id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -90,43 +93,48 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 
 	sub, err := h.queries.GetSubscription(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if sub.Type == "channel" {
 		vids, err := h.yt.FetchChannelVideos(r.Context(), sub.YoutubeID, 20)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		if err = h.saveVideos(r, sub.ID, vids); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 	} else {
 		vids, err := h.yt.FetchPlaylistVideos(r.Context(), sub.YoutubeID, 20)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		if err = h.saveVideos(r, sub.ID, vids); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
+	if err := h.queries.UpdateSubscriptionChecked(r.Context(), id); err != nil {
+		log.Printf("update subscription checked error: %v", err)
+	}
 
 	hideShorts := int64(0)
 	if sub.HideShorts.Valid {
 		hideShorts = sub.HideShorts.Int64
 	}
 
-	unwatchedCount, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+	unwatchedCount, err := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
 		SubscriptionID: id,
 		Column2:        hideShorts,
 	})
+	if err != nil {
+		log.Printf("count unwatched error: %v", err)
+	}
 
 	swc := templates.SubscriptionWithCount{
 		Subscription:   sub,
@@ -134,12 +142,15 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 	}
 
 	if sub.Active.Valid && sub.Active.Int64 == 1 {
-		videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+		videos, err := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
 			SubscriptionID: id,
 			Column2:        hideShorts,
 			Limit:          11,
 			Offset:         0,
 		})
+		if err != nil {
+			log.Printf("list videos error: %v", err)
+		}
 
 		hasMoreDB := len(videos) > 10
 		if hasMoreDB {

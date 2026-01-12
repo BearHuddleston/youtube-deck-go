@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -17,7 +18,7 @@ func (h *Handlers) HandleDeck(w http.ResponseWriter, r *http.Request) {
 		Offset: 0,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -28,7 +29,7 @@ func (h *Handlers) HandleDeck(w http.ResponseWriter, r *http.Request) {
 
 	activeRows, err := h.queries.ListActiveSubscriptions(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 
 	sub, err := h.queries.GetSubscription(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -92,7 +93,7 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 		Offset:         offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -122,7 +123,7 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 
 	sub, err := h.queries.GetSubscription(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -149,31 +150,41 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 		result, err = h.yt.FetchPlaylistVideosWithToken(r.Context(), sub.YoutubeID, pageToken, 20)
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	_ = h.saveVideos(r, sub.ID, result.Videos)
+	if err := h.saveVideos(r, sub.ID, result.Videos); err != nil {
+		log.Printf("save videos error: %v", err)
+	}
 
 	newToken := sql.NullString{String: result.NextPageToken, Valid: result.NextPageToken != ""}
-	_ = h.queries.UpdateSubscriptionPageToken(r.Context(), db.UpdateSubscriptionPageTokenParams{
+	if err := h.queries.UpdateSubscriptionPageToken(r.Context(), db.UpdateSubscriptionPageTokenParams{
 		PageToken: newToken,
 		ID:        sub.ID,
-	})
+	}); err != nil {
+		log.Printf("update page token error: %v", err)
+	}
 
 	// Get new total count after saving videos (filtered)
-	newCount, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+	newCount, err := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
 		SubscriptionID: id,
 		Column2:        hideShorts,
 	})
+	if err != nil {
+		log.Printf("count unwatched error: %v", err)
+	}
 
 	// Query starting from where we left off (after existing filtered videos)
-	videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+	videos, err := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
 		SubscriptionID: id,
 		Column2:        hideShorts,
 		Limit:          columnVideoPageSize + 1,
 		Offset:         existingCount,
 	})
+	if err != nil {
+		log.Printf("list videos error: %v", err)
+	}
 
 	hasMoreDB := len(videos) > columnVideoPageSize
 	if hasMoreDB {
@@ -203,14 +214,14 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		ID:     id,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if active == 1 {
 		sub, err := h.queries.GetSubscription(r.Context(), id)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
@@ -222,32 +233,47 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 			result, err = h.yt.FetchPlaylistVideosWithToken(r.Context(), sub.YoutubeID, "", 20)
 		}
 		if err == nil {
-			_ = h.saveVideos(r, sub.ID, result.Videos)
+			if err := h.saveVideos(r, sub.ID, result.Videos); err != nil {
+				log.Printf("save videos error: %v", err)
+			}
 			newToken := sql.NullString{String: result.NextPageToken, Valid: result.NextPageToken != ""}
-			_ = h.queries.UpdateSubscriptionPageToken(r.Context(), db.UpdateSubscriptionPageTokenParams{
+			if err := h.queries.UpdateSubscriptionPageToken(r.Context(), db.UpdateSubscriptionPageTokenParams{
 				PageToken: newToken,
 				ID:        sub.ID,
-			})
+			}); err != nil {
+				log.Printf("update page token error: %v", err)
+			}
 		}
-		_ = h.queries.UpdateSubscriptionChecked(r.Context(), id)
+		if err := h.queries.UpdateSubscriptionChecked(r.Context(), id); err != nil {
+			log.Printf("update subscription checked error: %v", err)
+		}
 
 		hideShorts := int64(0)
 		if sub.HideShorts.Valid {
 			hideShorts = sub.HideShorts.Int64
 		}
 
-		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())
-		count, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+		activeCount, err := h.queries.CountActiveSubscriptions(r.Context())
+		if err != nil {
+			log.Printf("count active error: %v", err)
+		}
+		count, err := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
 			SubscriptionID: id,
 			Column2:        hideShorts,
 		})
+		if err != nil {
+			log.Printf("count unwatched error: %v", err)
+		}
 
-		videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+		videos, err := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
 			SubscriptionID: id,
 			Column2:        hideShorts,
 			Limit:          columnVideoPageSize + 1,
 			Offset:         0,
 		})
+		if err != nil {
+			log.Printf("list videos error: %v", err)
+		}
 
 		hasMoreDB := len(videos) > columnVideoPageSize
 		if hasMoreDB {
@@ -262,7 +288,10 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 		}, videos, hasMoreDB, canFetchMore, int64(len(videos)), activeCount).Render(r.Context(), w)
 		_ = templates.SidebarCountOOB(id, count).Render(r.Context(), w)
 	} else {
-		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())
+		activeCount, err := h.queries.CountActiveSubscriptions(r.Context())
+		if err != nil {
+			log.Printf("count active error: %v", err)
+		}
 		rows, err := h.queries.ListAllSubscriptionsOrdered(r.Context())
 		if err == nil {
 			for _, row := range rows {
@@ -299,7 +328,7 @@ func (h *Handlers) HandleFilterSubscriptions(w http.ResponseWriter, r *http.Requ
 	if q != "" {
 		rows, err := h.queries.FilterSubscriptions(r.Context(), sql.NullString{String: q, Valid: true})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		subs := h.filterRowsToSubs(rows)
@@ -312,7 +341,7 @@ func (h *Handlers) HandleFilterSubscriptions(w http.ResponseWriter, r *http.Requ
 		Offset: offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -374,7 +403,7 @@ func (h *Handlers) HandleReorder(w http.ResponseWriter, r *http.Request) {
 		Context string   `json:"context"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -383,10 +412,12 @@ func (h *Handlers) HandleReorder(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		_ = h.queries.UpdateSubscriptionPosition(r.Context(), db.UpdateSubscriptionPositionParams{
+		if err := h.queries.UpdateSubscriptionPosition(r.Context(), db.UpdateSubscriptionPositionParams{
 			Position: sql.NullInt64{Int64: int64(i), Valid: true},
 			ID:       id,
-		})
+		}); err != nil {
+			log.Printf("update position error: %v", err)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -402,7 +433,7 @@ func (h *Handlers) HandleToggleHideShorts(w http.ResponseWriter, r *http.Request
 
 	sub, err := h.queries.GetSubscription(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -411,23 +442,31 @@ func (h *Handlers) HandleToggleHideShorts(w http.ResponseWriter, r *http.Request
 		newValue = 0
 	}
 
-	_ = h.queries.UpdateSubscriptionHideShorts(r.Context(), db.UpdateSubscriptionHideShortsParams{
+	if err := h.queries.UpdateSubscriptionHideShorts(r.Context(), db.UpdateSubscriptionHideShortsParams{
 		HideShorts: sql.NullInt64{Int64: newValue, Valid: true},
 		ID:         id,
-	})
+	}); err != nil {
+		log.Printf("update hide shorts error: %v", err)
+	}
 
-	count, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+	count, err := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
 		SubscriptionID: id,
 		Column2:        newValue,
 	})
+	if err != nil {
+		log.Printf("count unwatched error: %v", err)
+	}
 
 	// Fetch videos directly instead of relying on lazy load
-	videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+	videos, err := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
 		SubscriptionID: id,
 		Column2:        newValue,
 		Limit:          columnVideoPageSize + 1,
 		Offset:         0,
 	})
+	if err != nil {
+		log.Printf("list videos error: %v", err)
+	}
 
 	hasMoreDB := len(videos) > columnVideoPageSize
 	if hasMoreDB {

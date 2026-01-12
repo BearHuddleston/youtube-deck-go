@@ -25,14 +25,14 @@ func (h *Handlers) HandleSearchResults(w http.ResponseWriter, r *http.Request) {
 	if searchType == "channel" {
 		results, err := h.yt.SearchChannels(r.Context(), query, 10)
 		if err != nil {
-			_ = templates.SearchError(err.Error()).Render(r.Context(), w)
+			_ = templates.SearchError("Search failed. Please try again.").Render(r.Context(), w)
 			return
 		}
 		_ = templates.SearchResults(results).Render(r.Context(), w)
 	} else {
 		results, err := h.yt.SearchPlaylists(r.Context(), query, 10)
 		if err != nil {
-			_ = templates.SearchError(err.Error()).Render(r.Context(), w)
+			_ = templates.SearchError("Search failed. Please try again.").Render(r.Context(), w)
 			return
 		}
 		_ = templates.SearchResults(results).Render(r.Context(), w)

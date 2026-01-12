@@ -81,7 +81,7 @@ UPDATE subscriptions SET active = ? WHERE id = ?;
 UPDATE subscriptions SET position = ? WHERE id = ?;
 
 -- name: GetMaxPosition :one
-SELECT COALESCE(MAX(position), 0) as max_position FROM subscriptions;
+SELECT CAST(COALESCE(MAX(position), 0) AS INTEGER) as max_position FROM subscriptions;
 
 -- name: FilterSubscriptions :many
 SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count

@@ -33,7 +33,15 @@ templ LayoutWithAuth(title string, isAuthenticated bool) {
 			</style>
 		</head>
 		<body class="bg-zinc-950 text-zinc-100 min-h-screen" hx-indicator=".global-indicator">
-			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40">
+			<script>
+				document.body.addEventListener('htmx:configRequest', function(evt) {
+					var csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='));
+					if (csrfToken) {
+						evt.detail.headers['X-CSRF-Token'] = csrfToken.split('=')[1];
+					}
+				});
+			</script>
+			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40" role="navigation" aria-label="Main navigation">
 				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div class="flex items-center justify-between h-16">
 						<a href="/" class="flex items-center gap-3">
@@ -117,15 +125,19 @@ templ LayoutWithAuth(title string, isAuthenticated bool) {
 				<span id="toast-message"></span>
 			</div>
 			<script>
-				document.body.addEventListener('showToast', function(e) {
-					const toast = document.getElementById('toast');
-					const message = document.getElementById('toast-message');
-					message.textContent = e.detail.value;
-					toast.classList.remove('translate-y-20', 'opacity-0');
-					setTimeout(() => {
-						toast.classList.add('translate-y-20', 'opacity-0');
-					}, 4000);
-				});
+				(function() {
+					if (window._toastListenerAdded) return;
+					window._toastListenerAdded = true;
+					document.body.addEventListener('showToast', function(e) {
+						const toast = document.getElementById('toast');
+						const message = document.getElementById('toast-message');
+						message.textContent = e.detail.value;
+						toast.classList.remove('translate-y-20', 'opacity-0');
+						setTimeout(() => {
+							toast.classList.add('translate-y-20', 'opacity-0');
+						}, 4000);
+					});
+				})();
 			</script>
 		</body>
 	</html>
@@ -160,7 +172,15 @@ templ DeckLayout(title string, isAuthenticated bool) {
 			</style>
 		</head>
 		<body class="bg-zinc-950 text-zinc-100 h-screen overflow-hidden" hx-indicator=".global-indicator">
-			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 h-14">
+			<script>
+				document.body.addEventListener('htmx:configRequest', function(evt) {
+					var csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='));
+					if (csrfToken) {
+						evt.detail.headers['X-CSRF-Token'] = csrfToken.split('=')[1];
+					}
+				});
+			</script>
+			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 h-14" role="navigation" aria-label="Main navigation">
 				<div class="px-4 h-full">
 					<div class="flex items-center justify-between h-full">
 						<a href="/" class="flex items-center gap-3">
@@ -233,15 +253,19 @@ templ DeckLayout(title string, isAuthenticated bool) {
 				<span id="toast-message"></span>
 			</div>
 			<script>
-				document.body.addEventListener('showToast', function(e) {
-					const toast = document.getElementById('toast');
-					const message = document.getElementById('toast-message');
-					message.textContent = e.detail.value;
-					toast.classList.remove('translate-y-20', 'opacity-0');
-					setTimeout(() => {
-						toast.classList.add('translate-y-20', 'opacity-0');
-					}, 4000);
-				});
+				(function() {
+					if (window._toastListenerAdded) return;
+					window._toastListenerAdded = true;
+					document.body.addEventListener('showToast', function(e) {
+						const toast = document.getElementById('toast');
+						const message = document.getElementById('toast-message');
+						message.textContent = e.detail.value;
+						toast.classList.remove('translate-y-20', 'opacity-0');
+						setTimeout(() => {
+							toast.classList.add('translate-y-20', 'opacity-0');
+						}, 4000);
+					});
+				})();
 			</script>
 		</body>
 	</html>

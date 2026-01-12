@@ -31,7 +31,9 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Value:    state,
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   300,
 	})
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -51,7 +53,7 @@ func (h *AuthHandlers) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.auth.Exchange(r.Context(), code); err != nil {
-		http.Error(w, "Failed to exchange code: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "authentication failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -77,7 +79,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 	svc, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		_ = templates.SearchError("Failed to create YouTube service: "+err.Error()).Render(ctx, w)
+		_ = templates.SearchError("Failed to connect to YouTube").Render(ctx, w)
 		return
 	}
 
@@ -92,7 +94,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 		resp, err := call.Do()
 		if err != nil {
-			_ = templates.SearchError("Failed to fetch subscriptions: "+err.Error()).Render(ctx, w)
+			_ = templates.SearchError("Failed to fetch subscriptions").Render(ctx, w)
 			return
 		}
 
