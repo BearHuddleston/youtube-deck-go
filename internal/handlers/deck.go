@@ -126,8 +126,16 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Count existing unwatched videos before fetching more
-	existingCount, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
+	hideShorts := int64(0)
+	if sub.HideShorts.Valid {
+		hideShorts = sub.HideShorts.Int64
+	}
+
+	// Count existing unwatched videos before fetching more (filtered)
+	existingCount, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
+		SubscriptionID: id,
+		Column2:        hideShorts,
+	})
 
 	pageToken := ""
 	if sub.PageToken.Valid {
@@ -153,12 +161,16 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 		ID:        sub.ID,
 	})
 
-	// Get new total count after saving videos
-	newCount, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
-
-	// Query starting from where we left off (after existing videos)
-	videos, _ := h.queries.ListUnwatchedVideosPaginated(r.Context(), db.ListUnwatchedVideosPaginatedParams{
+	// Get new total count after saving videos (filtered)
+	newCount, _ := h.queries.CountUnwatchedBySubscriptionFiltered(r.Context(), db.CountUnwatchedBySubscriptionFilteredParams{
 		SubscriptionID: id,
+		Column2:        hideShorts,
+	})
+
+	// Query starting from where we left off (after existing filtered videos)
+	videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+		SubscriptionID: id,
+		Column2:        hideShorts,
 		Limit:          columnVideoPageSize + 1,
 		Offset:         existingCount,
 	})
@@ -386,9 +398,24 @@ func (h *Handlers) HandleToggleHideShorts(w http.ResponseWriter, r *http.Request
 		Column2:        newValue,
 	})
 
+	// Fetch videos directly instead of relying on lazy load
+	videos, _ := h.queries.ListUnwatchedVideosPaginatedFiltered(r.Context(), db.ListUnwatchedVideosPaginatedFilteredParams{
+		SubscriptionID: id,
+		Column2:        newValue,
+		Limit:          columnVideoPageSize + 1,
+		Offset:         0,
+	})
+
+	hasMoreDB := len(videos) > columnVideoPageSize
+	if hasMoreDB {
+		videos = videos[:columnVideoPageSize]
+	}
+
+	canFetchMore := !sub.PageToken.Valid || sub.PageToken.String != ""
+
 	sub.HideShorts = sql.NullInt64{Int64: newValue, Valid: true}
-	_ = templates.Column(templates.SubscriptionWithCount{
+	_ = templates.ColumnWithVideos(templates.SubscriptionWithCount{
 		Subscription:   sub,
 		UnwatchedCount: count,
-	}).Render(r.Context(), w)
+	}, videos, hasMoreDB, canFetchMore, int64(len(videos))).Render(r.Context(), w)
 }

@@ -33,6 +33,22 @@ templ Column(sub SubscriptionWithCount) {
 	</div>
 }
 
+templ ColumnWithVideos(sub SubscriptionWithCount, videos []db.Video, hasMoreDB bool, canFetchMore bool, nextOffset int64) {
+	<div
+		id={ "column-" + itoa(sub.ID) }
+		data-id={ itoa(sub.ID) }
+		class="column flex-shrink-0 w-80 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col h-full"
+		hx-post={ "/subscriptions/" + itoa(sub.ID) + "/refresh" }
+		hx-trigger="every 300s"
+		hx-swap="outerHTML"
+	>
+		@ColumnHeader(sub)
+		<div class="flex-1 overflow-y-auto p-3 space-y-3">
+			@ColumnVideos(videos, sub.ID, hasMoreDB, canFetchMore, nextOffset)
+		</div>
+	</div>
+}
+
 templ ColumnHeader(sub SubscriptionWithCount) {
 	<div class="flex items-center gap-2 p-3 border-b border-zinc-800 cursor-grab column-handle bg-zinc-800/50">
 		if sub.ThumbnailUrl.Valid {
