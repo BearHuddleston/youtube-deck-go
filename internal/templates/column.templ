@@ -7,6 +7,9 @@ templ Column(sub SubscriptionWithCount) {
 		id={ "column-" + itoa(sub.ID) }
 		data-id={ itoa(sub.ID) }
 		class="column flex-shrink-0 w-80 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col h-full"
+		hx-post={ "/subscriptions/" + itoa(sub.ID) + "/refresh" }
+		hx-trigger="every 300s"
+		hx-swap="outerHTML"
 	>
 		@ColumnHeader(sub)
 		<div class="flex-1 overflow-y-auto p-3 space-y-3">
