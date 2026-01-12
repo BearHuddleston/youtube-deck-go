@@ -136,7 +136,9 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 	}
 
 	w.Header().Set("HX-Trigger", `{"showToast": "Imported `+itoa(imported)+` subscriptions"}`)
-	_ = templates.SubscriptionGrid(subsWithCount).Render(ctx, w)
+	w.Header().Set("HX-Retarget", "#sidebar-list")
+	w.Header().Set("HX-Reswap", "innerHTML")
+	_ = templates.SidebarList(subsWithCount).Render(ctx, w)
 }
 
 func (h *AuthHandlers) IsAuthenticated() bool {
