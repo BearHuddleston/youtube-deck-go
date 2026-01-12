@@ -117,6 +117,9 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Count existing unwatched videos before fetching more
+	existingCount, _ := h.queries.CountUnwatchedBySubscription(r.Context(), id)
+
 	pageToken := ""
 	if sub.PageToken.Valid {
 		pageToken = sub.PageToken.String
@@ -141,10 +144,11 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 		ID:        sub.ID,
 	})
 
+	// Query starting from where we left off (after existing videos)
 	videos, _ := h.queries.ListUnwatchedVideosPaginated(r.Context(), db.ListUnwatchedVideosPaginatedParams{
 		SubscriptionID: id,
 		Limit:          columnVideoPageSize + 1,
-		Offset:         0,
+		Offset:         existingCount,
 	})
 
 	hasMoreDB := len(videos) > columnVideoPageSize
@@ -154,7 +158,8 @@ func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request)
 
 	canFetchMore := result.NextPageToken != ""
 
-	_ = templates.ColumnVideos(videos, id, hasMoreDB, canFetchMore, int64(len(videos))).Render(r.Context(), w)
+	nextOffset := existingCount + int64(len(videos))
+	_ = templates.ColumnVideos(videos, id, hasMoreDB, canFetchMore, nextOffset).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
