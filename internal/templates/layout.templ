@@ -35,9 +35,9 @@ templ LayoutWithAuth(title string, isAuthenticated bool) {
 		<body class="bg-zinc-950 text-zinc-100 min-h-screen" hx-indicator=".global-indicator">
 			<script>
 				document.body.addEventListener('htmx:configRequest', function(evt) {
-					var csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='));
-					if (csrfToken) {
-						evt.detail.headers['X-CSRF-Token'] = csrfToken.split('=')[1];
+					var match = document.cookie.match(/csrf_token=([^;]+)/);
+					if (match) {
+						evt.detail.headers['X-CSRF-Token'] = match[1];
 					}
 				});
 			</script>
@@ -174,9 +174,9 @@ templ DeckLayout(title string, isAuthenticated bool) {
 		<body class="bg-zinc-950 text-zinc-100 h-screen overflow-hidden" hx-indicator=".global-indicator">
 			<script>
 				document.body.addEventListener('htmx:configRequest', function(evt) {
-					var csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='));
-					if (csrfToken) {
-						evt.detail.headers['X-CSRF-Token'] = csrfToken.split('=')[1];
+					var match = document.cookie.match(/csrf_token=([^;]+)/);
+					if (match) {
+						evt.detail.headers['X-CSRF-Token'] = match[1];
 					}
 				});
 			</script>
