@@ -213,31 +213,30 @@ func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {
 			UnwatchedCount: count,
 		}, activeCount).Render(r.Context(), w)
 	} else {
+		activeCount, _ := h.queries.CountActiveSubscriptions(r.Context())
 		rows, err := h.queries.ListAllSubscriptionsOrdered(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		for _, row := range rows {
-			if row.ID == id {
-				_ = templates.SidebarItem(templates.SubscriptionWithCount{
-					Subscription: db.Subscription{
-						ID:           row.ID,
-						Name:         row.Name,
-						YoutubeID:    row.YoutubeID,
-						Type:         row.Type,
-						ThumbnailUrl: row.ThumbnailUrl,
-						LastChecked:  row.LastChecked,
-						CreatedAt:    row.CreatedAt,
-						Position:     row.Position,
-						Active:       row.Active,
-					},
-					UnwatchedCount: row.UnwatchedCount,
-				}).Render(r.Context(), w)
-				return
+		if err == nil {
+			for _, row := range rows {
+				if row.ID == id {
+					_ = templates.SidebarItem(templates.SubscriptionWithCount{
+						Subscription: db.Subscription{
+							ID:           row.ID,
+							Name:         row.Name,
+							YoutubeID:    row.YoutubeID,
+							Type:         row.Type,
+							ThumbnailUrl: row.ThumbnailUrl,
+							LastChecked:  row.LastChecked,
+							CreatedAt:    row.CreatedAt,
+							Position:     row.Position,
+							Active:       row.Active,
+						},
+						UnwatchedCount: row.UnwatchedCount,
+					}).Render(r.Context(), w)
+					break
+				}
 			}
 		}
-		w.WriteHeader(http.StatusOK)
+		_ = templates.RemoveActiveChipOOB(id, activeCount).Render(r.Context(), w)
 	}
 }
 

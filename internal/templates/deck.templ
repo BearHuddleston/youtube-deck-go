@@ -210,6 +210,21 @@ templ ActiveColumnChipOOB(sub SubscriptionWithCount, activeCount int64) {
 	}
 }
 
+templ RemoveActiveChipOOB(subscriptionID int64, activeCount int64) {
+	<div id={ "active-chip-" + itoa(subscriptionID) } hx-swap-oob="delete"></div>
+	<div id={ "column-" + itoa(subscriptionID) } hx-swap-oob="delete"></div>
+	<span id="active-columns-count" hx-swap-oob="true" class="text-xs text-zinc-600">{ itoa64(activeCount) }</span>
+	if activeCount == 0 {
+		<div id="active-columns-section" hx-swap-oob="outerHTML" class="hidden">
+			<div class="px-3 py-2 flex items-center justify-between">
+				<h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Active Columns</h3>
+				<span id="active-columns-count" class="text-xs text-zinc-600">0</span>
+			</div>
+			<div id="active-columns-list" class="px-2 pb-2 flex flex-wrap gap-1"></div>
+		</div>
+	}
+}
+
 templ ActiveColumnChip(sub SubscriptionWithCount) {
 	<div
 		id={ "active-chip-" + itoa(sub.ID) }
@@ -227,9 +242,7 @@ templ ActiveColumnChip(sub SubscriptionWithCount) {
 		<span class="text-xs text-zinc-300 truncate max-w-24">{ sub.Name }</span>
 		<button
 			hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=0" }
-			hx-target={ "#column-" + itoa(sub.ID) }
-			hx-swap="delete"
-			hx-on::after-request="this.closest('[id^=active-chip-]').remove(); updateActiveSection()"
+			hx-swap="none"
 			class="p-0.5 rounded-full hover:bg-zinc-600 text-zinc-500 hover:text-zinc-300 transition-colors"
 			title="Remove from deck"
 		>

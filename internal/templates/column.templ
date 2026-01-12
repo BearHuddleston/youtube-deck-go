@@ -68,9 +68,7 @@ templ ColumnHeader(sub SubscriptionWithCount) {
 		</button>
 		<button
 			hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=0" }
-			hx-target={ "#column-" + itoa(sub.ID) }
-			hx-swap="delete"
-			hx-on::after-request="document.getElementById('active-chip-' + this.closest('[data-id]').dataset.id)?.remove(); updateActiveSection()"
+			hx-swap="none"
 			class="p-1 hover:bg-red-600 rounded transition-colors"
 			title="Close column"
 		>
