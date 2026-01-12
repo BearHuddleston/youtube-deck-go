@@ -530,6 +530,52 @@ func (q *Queries) ListUnwatchedVideos(ctx context.Context, subscriptionID int64)
 	return items, nil
 }
 
+const listUnwatchedVideosPaginated = `-- name: ListUnwatchedVideosPaginated :many
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos
+WHERE subscription_id = ? AND watched = 0
+ORDER BY published_at DESC
+LIMIT ? OFFSET ?
+`
+
+type ListUnwatchedVideosPaginatedParams struct {
+	SubscriptionID int64 `json:"subscription_id"`
+	Limit          int64 `json:"limit"`
+	Offset         int64 `json:"offset"`
+}
+
+func (q *Queries) ListUnwatchedVideosPaginated(ctx context.Context, arg ListUnwatchedVideosPaginatedParams) ([]Video, error) {
+	rows, err := q.db.QueryContext(ctx, listUnwatchedVideosPaginated, arg.SubscriptionID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Video{}
+	for rows.Next() {
+		var i Video
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionID,
+			&i.YoutubeID,
+			&i.Title,
+			&i.ThumbnailUrl,
+			&i.Duration,
+			&i.PublishedAt,
+			&i.Watched,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVideos = `-- name: ListVideos :many
 SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos WHERE subscription_id = ? ORDER BY published_at DESC
 `

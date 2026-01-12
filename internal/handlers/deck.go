@@ -60,6 +60,8 @@ func (h *Handlers) activeRowsToSubs(rows []db.ListActiveSubscriptionsRow) []temp
 	return subs
 }
 
+const columnVideoPageSize = 10
+
 func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -68,13 +70,26 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	videos, err := h.queries.ListUnwatchedVideos(r.Context(), id)
+	offsetStr := r.URL.Query().Get("offset")
+	offset, _ := strconv.ParseInt(offsetStr, 10, 64)
+
+	videos, err := h.queries.ListUnwatchedVideosPaginated(r.Context(), db.ListUnwatchedVideosPaginatedParams{
+		SubscriptionID: id,
+		Limit:          columnVideoPageSize + 1,
+		Offset:         offset,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_ = templates.ColumnVideos(videos).Render(r.Context(), w)
+	hasMore := len(videos) > columnVideoPageSize
+	if hasMore {
+		videos = videos[:columnVideoPageSize]
+	}
+
+	nextOffset := offset + int64(len(videos))
+	_ = templates.ColumnVideos(videos, id, hasMore, nextOffset).Render(r.Context(), w)
 }
 
 func (h *Handlers) HandleToggleActive(w http.ResponseWriter, r *http.Request) {

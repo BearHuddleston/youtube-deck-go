@@ -102,3 +102,9 @@ LIMIT ? OFFSET ?;
 
 -- name: CountActiveSubscriptions :one
 SELECT COUNT(*) FROM subscriptions WHERE active = 1;
+
+-- name: ListUnwatchedVideosPaginated :many
+SELECT * FROM videos
+WHERE subscription_id = ? AND watched = 0
+ORDER BY published_at DESC
+LIMIT ? OFFSET ?;
