@@ -127,7 +127,8 @@ CREATE TABLE IF NOT EXISTS videos (
     duration TEXT,
     published_at DATETIME,
     watched INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_short INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_videos_subscription ON videos(subscription_id);
@@ -139,4 +140,5 @@ var migrations = []string{
 	"ALTER TABLE subscriptions ADD COLUMN active INTEGER DEFAULT 0",
 	"ALTER TABLE subscriptions ADD COLUMN page_token TEXT",
 	"ALTER TABLE subscriptions ADD COLUMN hide_shorts INTEGER DEFAULT 0",
+	"ALTER TABLE videos ADD COLUMN is_short INTEGER DEFAULT 0",
 }

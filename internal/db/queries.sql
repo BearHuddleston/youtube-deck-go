@@ -25,8 +25,8 @@ SELECT * FROM videos WHERE subscription_id = ? AND watched = 0 ORDER BY publishe
 SELECT * FROM videos WHERE id = ?;
 
 -- name: CreateVideo :one
-INSERT INTO videos (subscription_id, youtube_id, title, thumbnail_url, duration, published_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO videos (subscription_id, youtube_id, title, thumbnail_url, duration, published_at, is_short)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: ToggleWatched :one
@@ -122,13 +122,7 @@ UPDATE subscriptions SET hide_shorts = ? WHERE id = ?;
 SELECT * FROM videos
 WHERE subscription_id = ?
   AND watched = 0
-  AND (? = 0 OR (
-    (duration IS NULL OR NOT (
-      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
-    ))
-    AND title NOT LIKE '%#shorts%'
-    AND title NOT LIKE '%#short%'
-  ))
+  AND (? = 0 OR is_short = 0)
 ORDER BY published_at DESC
 LIMIT ? OFFSET ?;
 
@@ -136,10 +130,7 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*) FROM videos
 WHERE subscription_id = ?
   AND watched = 0
-  AND (? = 0 OR (
-    (duration IS NULL OR NOT (
-      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
-    ))
-    AND title NOT LIKE '%#shorts%'
-    AND title NOT LIKE '%#short%'
-  ));
+  AND (? = 0 OR is_short = 0);
+
+-- name: UpdateVideoIsShort :exec
+UPDATE videos SET is_short = ? WHERE id = ?;

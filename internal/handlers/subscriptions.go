@@ -133,10 +133,26 @@ func (h *Handlers) HandleRefreshSubscription(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *Handlers) saveVideos(r *http.Request, subID int64, vids []youtube.VideoInfo) error {
+	// Filter to only new videos
+	var newVids []youtube.VideoInfo
 	for _, v := range vids {
 		exists, _ := h.queries.VideoExistsByYoutubeID(r.Context(), v.ID)
-		if exists == 1 {
-			continue
+		if exists == 0 {
+			newVids = append(newVids, v)
+		}
+	}
+
+	if len(newVids) == 0 {
+		return nil
+	}
+
+	// Check shorts status in parallel for new videos
+	newVids = h.yt.CheckShortsParallel(r.Context(), newVids)
+
+	for _, v := range newVids {
+		isShort := int64(0)
+		if v.IsShort {
+			isShort = 1
 		}
 		_, err := h.queries.CreateVideo(r.Context(), db.CreateVideoParams{
 			SubscriptionID: subID,
@@ -145,6 +161,7 @@ func (h *Handlers) saveVideos(r *http.Request, subID int64, vids []youtube.Video
 			ThumbnailUrl:   sql.NullString{String: v.ThumbnailURL, Valid: v.ThumbnailURL != ""},
 			Duration:       sql.NullString{String: v.Duration, Valid: v.Duration != ""},
 			PublishedAt:    sql.NullTime{Time: v.PublishedAt, Valid: !v.PublishedAt.IsZero()},
+			IsShort:        sql.NullInt64{Int64: isShort, Valid: true},
 		})
 		if err != nil {
 			return err

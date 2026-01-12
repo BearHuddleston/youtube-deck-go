@@ -32,4 +32,5 @@ type Video struct {
 	PublishedAt    sql.NullTime   `json:"published_at"`
 	Watched        sql.NullInt64  `json:"watched"`
 	CreatedAt      sql.NullTime   `json:"created_at"`
+	IsShort        sql.NullInt64  `json:"is_short"`
 }

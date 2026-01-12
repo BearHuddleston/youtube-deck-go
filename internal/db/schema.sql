@@ -21,7 +21,8 @@ CREATE TABLE videos (
     duration TEXT,
     published_at DATETIME,
     watched INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_short INTEGER DEFAULT 0
 );
 
 CREATE INDEX idx_videos_subscription ON videos(subscription_id);

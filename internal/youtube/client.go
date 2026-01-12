@@ -3,6 +3,8 @@ package youtube
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sync"
 	"time"
 
 	"google.golang.org/api/option"
@@ -10,7 +12,8 @@ import (
 )
 
 type Client struct {
-	service *youtube.Service
+	service    *youtube.Service
+	httpClient *http.Client
 }
 
 type SearchResult struct {
@@ -26,6 +29,7 @@ type VideoInfo struct {
 	ThumbnailURL string
 	Duration     string
 	PublishedAt  time.Time
+	IsShort      bool
 }
 
 type FetchResult struct {
@@ -39,7 +43,13 @@ func New(apiKey string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("youtube: create service: %w", err)
 	}
-	return &Client{service: service}, nil
+	httpClient := &http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // Don't follow redirects
+		},
+	}
+	return &Client{service: service, httpClient: httpClient}, nil
 }
 
 func (c *Client) SearchChannels(ctx context.Context, query string, maxResults int64) ([]SearchResult, error) {
@@ -179,4 +189,41 @@ func getBestThumbnail(t *youtube.ThumbnailDetails) string {
 		return t.Default.Url
 	}
 	return ""
+}
+
+// IsShort checks if a video is a YouTube Short by making a HEAD request
+// to the /shorts/ URL. Returns true if it's a Short, false otherwise.
+func (c *Client) IsShort(ctx context.Context, videoID string) bool {
+	url := fmt.Sprintf("https://www.youtube.com/shorts/%s", videoID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return false
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	// 200 = it's a Short, 303 redirect = not a Short
+	return resp.StatusCode == http.StatusOK
+}
+
+// CheckShortsParallel checks multiple videos for Short status in parallel
+func (c *Client) CheckShortsParallel(ctx context.Context, videos []VideoInfo) []VideoInfo {
+	var wg sync.WaitGroup
+	result := make([]VideoInfo, len(videos))
+	copy(result, videos)
+
+	for i := range result {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			result[idx].IsShort = c.IsShort(ctx, result[idx].ID)
+		}(i)
+	}
+
+	wg.Wait()
+	return result
 }

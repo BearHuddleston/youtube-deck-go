@@ -47,13 +47,7 @@ const countUnwatchedBySubscriptionFiltered = `-- name: CountUnwatchedBySubscript
 SELECT COUNT(*) FROM videos
 WHERE subscription_id = ?
   AND watched = 0
-  AND (? = 0 OR (
-    (duration IS NULL OR NOT (
-      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
-    ))
-    AND title NOT LIKE '%#shorts%'
-    AND title NOT LIKE '%#short%'
-  ))
+  AND (? = 0 OR is_short = 0)
 `
 
 type CountUnwatchedBySubscriptionFilteredParams struct {
@@ -110,9 +104,9 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 }
 
 const createVideo = `-- name: CreateVideo :one
-INSERT INTO videos (subscription_id, youtube_id, title, thumbnail_url, duration, published_at)
-VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at
+INSERT INTO videos (subscription_id, youtube_id, title, thumbnail_url, duration, published_at, is_short)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short
 `
 
 type CreateVideoParams struct {
@@ -122,6 +116,7 @@ type CreateVideoParams struct {
 	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
 	Duration       sql.NullString `json:"duration"`
 	PublishedAt    sql.NullTime   `json:"published_at"`
+	IsShort        sql.NullInt64  `json:"is_short"`
 }
 
 func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error) {
@@ -132,6 +127,7 @@ func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video
 		arg.ThumbnailUrl,
 		arg.Duration,
 		arg.PublishedAt,
+		arg.IsShort,
 	)
 	var i Video
 	err := row.Scan(
@@ -144,6 +140,7 @@ func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video
 		&i.PublishedAt,
 		&i.Watched,
 		&i.CreatedAt,
+		&i.IsShort,
 	)
 	return i, err
 }
@@ -253,7 +250,7 @@ func (q *Queries) GetSubscription(ctx context.Context, id int64) (Subscription, 
 }
 
 const getVideo = `-- name: GetVideo :one
-SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos WHERE id = ?
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short FROM videos WHERE id = ?
 `
 
 func (q *Queries) GetVideo(ctx context.Context, id int64) (Video, error) {
@@ -269,6 +266,7 @@ func (q *Queries) GetVideo(ctx context.Context, id int64) (Video, error) {
 		&i.PublishedAt,
 		&i.Watched,
 		&i.CreatedAt,
+		&i.IsShort,
 	)
 	return i, err
 }
@@ -556,7 +554,7 @@ func (q *Queries) ListSubscriptionsWithUnwatchedCount(ctx context.Context) ([]Li
 }
 
 const listUnwatchedVideos = `-- name: ListUnwatchedVideos :many
-SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos WHERE subscription_id = ? AND watched = 0 ORDER BY published_at DESC
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short FROM videos WHERE subscription_id = ? AND watched = 0 ORDER BY published_at DESC
 `
 
 func (q *Queries) ListUnwatchedVideos(ctx context.Context, subscriptionID int64) ([]Video, error) {
@@ -578,6 +576,7 @@ func (q *Queries) ListUnwatchedVideos(ctx context.Context, subscriptionID int64)
 			&i.PublishedAt,
 			&i.Watched,
 			&i.CreatedAt,
+			&i.IsShort,
 		); err != nil {
 			return nil, err
 		}
@@ -593,7 +592,7 @@ func (q *Queries) ListUnwatchedVideos(ctx context.Context, subscriptionID int64)
 }
 
 const listUnwatchedVideosPaginated = `-- name: ListUnwatchedVideosPaginated :many
-SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short FROM videos
 WHERE subscription_id = ? AND watched = 0
 ORDER BY published_at DESC
 LIMIT ? OFFSET ?
@@ -624,6 +623,7 @@ func (q *Queries) ListUnwatchedVideosPaginated(ctx context.Context, arg ListUnwa
 			&i.PublishedAt,
 			&i.Watched,
 			&i.CreatedAt,
+			&i.IsShort,
 		); err != nil {
 			return nil, err
 		}
@@ -639,16 +639,10 @@ func (q *Queries) ListUnwatchedVideosPaginated(ctx context.Context, arg ListUnwa
 }
 
 const listUnwatchedVideosPaginatedFiltered = `-- name: ListUnwatchedVideosPaginatedFiltered :many
-SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short FROM videos
 WHERE subscription_id = ?
   AND watched = 0
-  AND (? = 0 OR (
-    (duration IS NULL OR NOT (
-      duration LIKE 'PT%S' AND duration NOT LIKE 'PT%M%' AND duration NOT LIKE 'PT%H%'
-    ))
-    AND title NOT LIKE '%#shorts%'
-    AND title NOT LIKE '%#short%'
-  ))
+  AND (? = 0 OR is_short = 0)
 ORDER BY published_at DESC
 LIMIT ? OFFSET ?
 `
@@ -684,6 +678,7 @@ func (q *Queries) ListUnwatchedVideosPaginatedFiltered(ctx context.Context, arg 
 			&i.PublishedAt,
 			&i.Watched,
 			&i.CreatedAt,
+			&i.IsShort,
 		); err != nil {
 			return nil, err
 		}
@@ -699,7 +694,7 @@ func (q *Queries) ListUnwatchedVideosPaginatedFiltered(ctx context.Context, arg 
 }
 
 const listVideos = `-- name: ListVideos :many
-SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at FROM videos WHERE subscription_id = ? ORDER BY published_at DESC
+SELECT id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short FROM videos WHERE subscription_id = ? ORDER BY published_at DESC
 `
 
 func (q *Queries) ListVideos(ctx context.Context, subscriptionID int64) ([]Video, error) {
@@ -721,6 +716,7 @@ func (q *Queries) ListVideos(ctx context.Context, subscriptionID int64) ([]Video
 			&i.PublishedAt,
 			&i.Watched,
 			&i.CreatedAt,
+			&i.IsShort,
 		); err != nil {
 			return nil, err
 		}
@@ -814,7 +810,7 @@ func (q *Queries) SubscriptionsWithUnwatchedCount(ctx context.Context) ([]Subscr
 
 const toggleWatched = `-- name: ToggleWatched :one
 UPDATE videos SET watched = NOT watched WHERE id = ?
-RETURNING id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at
+RETURNING id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short
 `
 
 func (q *Queries) ToggleWatched(ctx context.Context, id int64) (Video, error) {
@@ -830,6 +826,7 @@ func (q *Queries) ToggleWatched(ctx context.Context, id int64) (Video, error) {
 		&i.PublishedAt,
 		&i.Watched,
 		&i.CreatedAt,
+		&i.IsShort,
 	)
 	return i, err
 }
@@ -896,6 +893,20 @@ type UpdateSubscriptionPositionParams struct {
 
 func (q *Queries) UpdateSubscriptionPosition(ctx context.Context, arg UpdateSubscriptionPositionParams) error {
 	_, err := q.db.ExecContext(ctx, updateSubscriptionPosition, arg.Position, arg.ID)
+	return err
+}
+
+const updateVideoIsShort = `-- name: UpdateVideoIsShort :exec
+UPDATE videos SET is_short = ? WHERE id = ?
+`
+
+type UpdateVideoIsShortParams struct {
+	IsShort sql.NullInt64 `json:"is_short"`
+	ID      int64         `json:"id"`
+}
+
+func (q *Queries) UpdateVideoIsShort(ctx context.Context, arg UpdateVideoIsShortParams) error {
+	_, err := q.db.ExecContext(ctx, updateVideoIsShort, arg.IsShort, arg.ID)
 	return err
 }
 
