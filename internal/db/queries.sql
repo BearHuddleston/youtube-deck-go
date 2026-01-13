@@ -6,7 +6,7 @@ SELECT * FROM subscriptions WHERE id = ?;
 
 -- name: CreateSubscription :one
 INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url, position, active)
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, COALESCE((SELECT MAX(position) FROM subscriptions), 0) + 1, ?)
 RETURNING *;
 
 -- name: DeleteSubscription :exec
