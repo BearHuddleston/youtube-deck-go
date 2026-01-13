@@ -1,5 +1,33 @@
 package templates
 
+templ Head(title string) {
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title } | YouTube Deck</title>
+		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+		<style>
+			.htmx-request .htmx-indicator { display: inline-flex !important; }
+			.htmx-indicator { display: none; }
+			@keyframes spin { to { transform: rotate(360deg); } }
+			.spinner { animation: spin 1s linear infinite; }
+			.htmx-request.htmx-indicator { display: inline-flex !important; }
+			.deck-scroll { overflow-x: auto; scroll-snap-type: x proximity; }
+			.deck-scroll::-webkit-scrollbar { height: 8px; }
+			.deck-scroll::-webkit-scrollbar-track { background: #27272a; border-radius: 4px; }
+			.deck-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
+			.deck-scroll::-webkit-scrollbar-thumb:hover { background: #71717a; }
+			.column { scroll-snap-align: start; }
+			.sidebar-transition { transition: width 200ms ease-in-out; }
+			.sortable-ghost { opacity: 0.4; }
+			.sortable-drag { opacity: 1; }
+		</style>
+	</head>
+}
+
 templ Layout(title string) {
 	@LayoutWithAuth(title, false)
 }
@@ -7,31 +35,7 @@ templ Layout(title string) {
 templ LayoutWithAuth(title string, isAuthenticated bool) {
 	<!DOCTYPE html>
 	<html lang="en">
-		<head>
-			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>{ title } | YouTube Deck</title>
-			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
-			<script src="https://cdn.tailwindcss.com"></script>
-			<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
-			<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-			<style>
-				.htmx-request .htmx-indicator { display: inline-flex !important; }
-				.htmx-indicator { display: none; }
-				@keyframes spin { to { transform: rotate(360deg); } }
-				.spinner { animation: spin 1s linear infinite; }
-				.htmx-request.htmx-indicator { display: inline-flex !important; }
-				.deck-scroll { overflow-x: auto; scroll-snap-type: x proximity; }
-				.deck-scroll::-webkit-scrollbar { height: 8px; }
-				.deck-scroll::-webkit-scrollbar-track { background: #27272a; border-radius: 4px; }
-				.deck-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
-				.deck-scroll::-webkit-scrollbar-thumb:hover { background: #71717a; }
-				.column { scroll-snap-align: start; }
-				.sidebar-transition { transition: width 200ms ease-in-out; }
-				.sortable-ghost { opacity: 0.4; }
-				.sortable-drag { opacity: 1; }
-			</style>
-		</head>
+		@Head(title)
 		<body class="bg-zinc-950 text-zinc-100 min-h-screen" hx-indicator=".global-indicator">
 			<script>
 				document.body.addEventListener('htmx:configRequest', function(evt) {
@@ -146,31 +150,7 @@ templ LayoutWithAuth(title string, isAuthenticated bool) {
 templ DeckLayout(title string, isAuthenticated bool) {
 	<!DOCTYPE html>
 	<html lang="en">
-		<head>
-			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>{ title } | YouTube Deck</title>
-			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
-			<script src="https://cdn.tailwindcss.com"></script>
-			<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
-			<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-			<style>
-				.htmx-request .htmx-indicator { display: inline-flex !important; }
-				.htmx-indicator { display: none; }
-				@keyframes spin { to { transform: rotate(360deg); } }
-				.spinner { animation: spin 1s linear infinite; }
-				.htmx-request.htmx-indicator { display: inline-flex !important; }
-				.deck-scroll { overflow-x: auto; scroll-snap-type: x proximity; }
-				.deck-scroll::-webkit-scrollbar { height: 8px; }
-				.deck-scroll::-webkit-scrollbar-track { background: #27272a; border-radius: 4px; }
-				.deck-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
-				.deck-scroll::-webkit-scrollbar-thumb:hover { background: #71717a; }
-				.column { scroll-snap-align: start; }
-				.sidebar-transition { transition: width 200ms ease-in-out; }
-				.sortable-ghost { opacity: 0.4; }
-				.sortable-drag { opacity: 1; }
-			</style>
-		</head>
+		@Head(title)
 		<body class="bg-zinc-950 text-zinc-100 h-screen overflow-hidden" hx-indicator=".global-indicator">
 			<script>
 				document.body.addEventListener('htmx:configRequest', function(evt) {
