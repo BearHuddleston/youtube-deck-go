@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -79,7 +80,8 @@ func main() {
 		log.Printf("OAuth disabled (no client_secret.json found)")
 	}
 
-	h := handlers.New(database, ytClient, authMgr)
+	logger := slog.Default()
+	h := handlers.New(database, ytClient, authMgr, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", h.HandleDeck)

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"log/slog"
 
 	"youtube-deck-go/internal/auth"
 	"youtube-deck-go/internal/db"
@@ -13,13 +14,15 @@ type Handlers struct {
 	db      *sql.DB
 	yt      *youtube.Client
 	auth    *auth.Manager
+	log     *slog.Logger
 }
 
-func New(database *sql.DB, yt *youtube.Client, authMgr *auth.Manager) *Handlers {
+func New(database *sql.DB, yt *youtube.Client, authMgr *auth.Manager, log *slog.Logger) *Handlers {
 	return &Handlers{
 		queries: db.New(database),
 		db:      database,
 		yt:      yt,
 		auth:    authMgr,
+		log:     log,
 	}
 }
