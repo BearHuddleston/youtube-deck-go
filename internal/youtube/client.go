@@ -216,10 +216,13 @@ func (c *Client) CheckShortsParallel(ctx context.Context, videos []VideoInfo) []
 	result := make([]VideoInfo, len(videos))
 	copy(result, videos)
 
+	sem := make(chan struct{}, 10)
+
 	for i := range result {
 		wg.Add(1)
 		go func(idx int) {
-			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem; wg.Done() }()
 			result[idx].IsShort = c.IsShort(ctx, result[idx].ID)
 		}(i)
 	}
