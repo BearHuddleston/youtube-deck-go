@@ -113,6 +113,11 @@ func (h *Handlers) HandleColumnVideos(w http.ResponseWriter, r *http.Request) {
 	_ = templates.ColumnVideos(videos, id, hasMoreDB, canFetchMore, nextOffset).Render(r.Context(), w)
 }
 
+// HandleFetchMoreVideos fetches more videos from YouTube.
+// NOTE: There's a known race condition where concurrent requests can cause
+// duplicate or missing videos in pagination. The proper fix would be to use
+// cursor-based pagination with the video's published_at timestamp instead of
+// offset-based pagination. See issue #14.
 func (h *Handlers) HandleFetchMoreVideos(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
