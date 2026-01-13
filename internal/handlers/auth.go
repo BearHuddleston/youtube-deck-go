@@ -82,7 +82,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 		return
 	}
 
-	var imported int
+	var imported, skipped int
 	pageToken := ""
 
 	for {
@@ -109,7 +109,9 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 				Type:         "channel",
 				ThumbnailUrl: sql.NullString{String: thumbnail, Valid: thumbnail != ""},
 			})
-			if err == nil {
+			if err != nil {
+				skipped++
+			} else {
 				imported++
 			}
 		}
@@ -137,7 +139,11 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 		}
 	}
 
-	w.Header().Set("HX-Trigger", `{"showToast": "Imported `+itoa(imported)+` subscriptions"}`)
+	msg := "Imported " + itoa(imported) + " subscriptions"
+	if skipped > 0 {
+		msg += " (" + itoa(skipped) + " skipped)"
+	}
+	w.Header().Set("HX-Trigger", `{"showToast": "`+msg+`"}`)
 	w.Header().Set("HX-Retarget", "#sidebar-list")
 	w.Header().Set("HX-Reswap", "innerHTML")
 	_ = templates.SidebarList(subsWithCount, false, 0).Render(ctx, w)
