@@ -46,6 +46,10 @@ func main() {
 	}
 	defer database.Close()
 
+	database.SetMaxOpenConns(1)
+	database.SetMaxIdleConns(1)
+	database.SetConnMaxLifetime(0)
+
 	if _, err := database.Exec(schema); err != nil {
 		log.Fatalf("failed to create schema: %v", err)
 	}
