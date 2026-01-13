@@ -45,13 +45,6 @@ SELECT COUNT(*) FROM videos WHERE subscription_id = ? AND watched = 0;
 -- name: VideoExistsByYoutubeID :one
 SELECT EXISTS(SELECT 1 FROM videos WHERE youtube_id = ?);
 
--- name: SubscriptionsWithUnwatchedCount :many
-SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
-FROM subscriptions s
-LEFT JOIN videos v ON v.subscription_id = s.id
-GROUP BY s.id
-ORDER BY s.name;
-
 -- name: ListSubscriptionsWithUnwatchedCount :many
 SELECT s.*, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
 FROM subscriptions s
