@@ -191,6 +191,7 @@ CREATE TABLE IF NOT EXISTS videos (
 CREATE INDEX IF NOT EXISTS idx_videos_subscription ON videos(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_videos_watched ON videos(watched);
 CREATE INDEX IF NOT EXISTS idx_videos_sub_watched_short ON videos(subscription_id, watched, is_short);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_active_position ON subscriptions(active, position);
 `
 
 var migrations = []string{
