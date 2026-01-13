@@ -11,10 +11,11 @@ templ LayoutWithAuth(title string, isAuthenticated bool) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } | YouTube Deck</title>
-			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+			<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+			<!-- Tailwind CDN is for development only and does not support SRI -->
 			<script src="https://cdn.tailwindcss.com"></script>
-			<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
-			<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+			<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" integrity="sha384-4lYa+D8VZ8Dv8KKSRqBrhbnrFPP0VPBoVNJD5KXwC4hjtj1YFnKj+K5KQhOWYVXj" crossorigin="anonymous"></script>
+			<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-n52I2tVKCZBrFRzP5zFSvEE6tsLJ+PSyBsLe8zN+HC8ll0YnVlNFLOqILCgqHN1M" crossorigin="anonymous"></script>
 			<style>
 				.htmx-request .htmx-indicator { display: inline-flex !important; }
 				.htmx-indicator { display: none; }
@@ -150,10 +151,11 @@ templ DeckLayout(title string, isAuthenticated bool) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } | YouTube Deck</title>
-			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+			<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+			<!-- Tailwind CDN is for development only and does not support SRI -->
 			<script src="https://cdn.tailwindcss.com"></script>
-			<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
-			<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+			<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" integrity="sha384-4lYa+D8VZ8Dv8KKSRqBrhbnrFPP0VPBoVNJD5KXwC4hjtj1YFnKj+K5KQhOWYVXj" crossorigin="anonymous"></script>
+			<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-n52I2tVKCZBrFRzP5zFSvEE6tsLJ+PSyBsLe8zN+HC8ll0YnVlNFLOqILCgqHN1M" crossorigin="anonymous"></script>
 			<style>
 				.htmx-request .htmx-indicator { display: inline-flex !important; }
 				.htmx-indicator { display: none; }
