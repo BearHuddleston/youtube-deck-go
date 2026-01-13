@@ -749,65 +749,6 @@ func (q *Queries) MarkWatched(ctx context.Context, id int64) error {
 	return err
 }
 
-const subscriptionsWithUnwatchedCount = `-- name: SubscriptionsWithUnwatchedCount :many
-SELECT s.id, s.name, s.youtube_id, s.type, s.thumbnail_url, s.last_checked, s.created_at, s.position, s.active, s.page_token, s.hide_shorts, COUNT(CASE WHEN v.watched = 0 THEN 1 END) as unwatched_count
-FROM subscriptions s
-LEFT JOIN videos v ON v.subscription_id = s.id
-GROUP BY s.id
-ORDER BY s.name
-`
-
-type SubscriptionsWithUnwatchedCountRow struct {
-	ID             int64          `json:"id"`
-	Name           string         `json:"name"`
-	YoutubeID      string         `json:"youtube_id"`
-	Type           string         `json:"type"`
-	ThumbnailUrl   sql.NullString `json:"thumbnail_url"`
-	LastChecked    sql.NullTime   `json:"last_checked"`
-	CreatedAt      sql.NullTime   `json:"created_at"`
-	Position       sql.NullInt64  `json:"position"`
-	Active         sql.NullInt64  `json:"active"`
-	PageToken      sql.NullString `json:"page_token"`
-	HideShorts     sql.NullInt64  `json:"hide_shorts"`
-	UnwatchedCount int64          `json:"unwatched_count"`
-}
-
-func (q *Queries) SubscriptionsWithUnwatchedCount(ctx context.Context) ([]SubscriptionsWithUnwatchedCountRow, error) {
-	rows, err := q.db.QueryContext(ctx, subscriptionsWithUnwatchedCount)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SubscriptionsWithUnwatchedCountRow{}
-	for rows.Next() {
-		var i SubscriptionsWithUnwatchedCountRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.YoutubeID,
-			&i.Type,
-			&i.ThumbnailUrl,
-			&i.LastChecked,
-			&i.CreatedAt,
-			&i.Position,
-			&i.Active,
-			&i.PageToken,
-			&i.HideShorts,
-			&i.UnwatchedCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const toggleWatched = `-- name: ToggleWatched :one
 UPDATE videos SET watched = NOT watched WHERE id = ?
 RETURNING id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short
