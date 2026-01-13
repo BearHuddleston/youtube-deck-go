@@ -24,14 +24,11 @@ func (h *Handlers) HandleAddSubscription(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	maxPos, _ := h.queries.GetMaxPosition(r.Context())
-
 	sub, err := h.queries.CreateSubscription(r.Context(), db.CreateSubscriptionParams{
 		YoutubeID:    req.YoutubeID,
 		Name:         req.Name,
 		Type:         req.Type,
 		ThumbnailUrl: sql.NullString{String: req.ThumbnailURL, Valid: req.ThumbnailURL != ""},
-		Position:     sql.NullInt64{Int64: maxPos + 1, Valid: true},
 		Active:       sql.NullInt64{Int64: 0, Valid: true},
 	})
 	if err != nil {

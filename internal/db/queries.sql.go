@@ -64,7 +64,7 @@ func (q *Queries) CountUnwatchedBySubscriptionFiltered(ctx context.Context, arg 
 
 const createSubscription = `-- name: CreateSubscription :one
 INSERT INTO subscriptions (name, youtube_id, type, thumbnail_url, position, active)
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, COALESCE((SELECT MAX(position) FROM subscriptions), 0) + 1, ?)
 RETURNING id, name, youtube_id, type, thumbnail_url, last_checked, created_at, position, active, page_token, hide_shorts
 `
 
@@ -73,7 +73,6 @@ type CreateSubscriptionParams struct {
 	YoutubeID    string         `json:"youtube_id"`
 	Type         string         `json:"type"`
 	ThumbnailUrl sql.NullString `json:"thumbnail_url"`
-	Position     sql.NullInt64  `json:"position"`
 	Active       sql.NullInt64  `json:"active"`
 }
 
@@ -83,7 +82,6 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 		arg.YoutubeID,
 		arg.Type,
 		arg.ThumbnailUrl,
-		arg.Position,
 		arg.Active,
 	)
 	var i Subscription
