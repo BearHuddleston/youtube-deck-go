@@ -27,6 +27,7 @@ SELECT * FROM videos WHERE id = ?;
 -- name: CreateVideo :one
 INSERT INTO videos (subscription_id, youtube_id, title, thumbnail_url, duration, published_at, is_short)
 VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(youtube_id) DO NOTHING
 RETURNING *;
 
 -- name: ToggleWatched :one

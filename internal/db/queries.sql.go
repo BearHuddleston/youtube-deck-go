@@ -106,6 +106,7 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 const createVideo = `-- name: CreateVideo :one
 INSERT INTO videos (subscription_id, youtube_id, title, thumbnail_url, duration, published_at, is_short)
 VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(youtube_id) DO NOTHING
 RETURNING id, subscription_id, youtube_id, title, thumbnail_url, duration, published_at, watched, created_at, is_short
 `
 
