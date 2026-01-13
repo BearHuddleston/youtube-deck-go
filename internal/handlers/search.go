@@ -25,6 +25,7 @@ func (h *Handlers) HandleSearchResults(w http.ResponseWriter, r *http.Request) {
 	if searchType == "channel" {
 		results, err := h.yt.SearchChannels(r.Context(), query, 10)
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			_ = templates.SearchError("Search failed. Please try again.").Render(r.Context(), w)
 			return
 		}
@@ -32,6 +33,7 @@ func (h *Handlers) HandleSearchResults(w http.ResponseWriter, r *http.Request) {
 	} else {
 		results, err := h.yt.SearchPlaylists(r.Context(), query, 10)
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			_ = templates.SearchError("Search failed. Please try again.").Render(r.Context(), w)
 			return
 		}
