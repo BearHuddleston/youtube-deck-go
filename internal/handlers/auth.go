@@ -15,7 +15,6 @@ import (
 type AuthHandlers struct {
 	auth    *auth.Manager
 	queries *db.Queries
-	state   string
 }
 
 func NewAuthHandlers(auth *auth.Manager, queries *db.Queries) *AuthHandlers {
@@ -24,7 +23,6 @@ func NewAuthHandlers(auth *auth.Manager, queries *db.Queries) *AuthHandlers {
 
 func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	url, state := h.auth.AuthURL()
-	h.state = state
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
