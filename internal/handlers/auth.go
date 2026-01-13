@@ -79,6 +79,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 	svc, err := youtube.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		_ = templates.SearchError("Failed to connect to YouTube").Render(ctx, w)
 		return
 	}
@@ -94,6 +95,7 @@ func (h *AuthHandlers) HandleImportSubscriptions(w http.ResponseWriter, r *http.
 
 		resp, err := call.Do()
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			_ = templates.SearchError("Failed to fetch subscriptions").Render(ctx, w)
 			return
 		}
