@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -44,8 +45,17 @@ func (h *Handlers) HandleToggleWatched(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.queries.MarkWatched(r.Context(), id)
+	if err := h.queries.MarkWatched(r.Context(), id); err != nil {
+		log.Printf("failed to mark video %d as watched: %v", id, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 
-	count, _ := h.queries.CountUnwatchedBySubscription(r.Context(), video.SubscriptionID)
+	count, err := h.queries.CountUnwatchedBySubscription(r.Context(), video.SubscriptionID)
+	if err != nil {
+		log.Printf("failed to count unwatched videos for subscription %d: %v", video.SubscriptionID, err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	_ = templates.UnwatchedCountsOOB(video.SubscriptionID, count).Render(r.Context(), w)
 }
