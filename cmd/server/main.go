@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"youtube-deck-go/internal/auth"
-	"youtube-deck-go/internal/db"
 	"youtube-deck-go/internal/handlers"
 	"youtube-deck-go/internal/middleware"
 	"youtube-deck-go/internal/youtube"
@@ -62,8 +61,6 @@ func main() {
 		}
 	}
 
-	queries := db.New(database)
-
 	ytClient, err := youtube.New(apiKey)
 	if err != nil {
 		log.Fatalf("failed to create youtube client: %v", err)
@@ -82,7 +79,7 @@ func main() {
 		log.Printf("OAuth disabled (no client_secret.json found)")
 	}
 
-	h := handlers.New(queries, ytClient, authMgr)
+	h := handlers.New(database, ytClient, authMgr)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", h.HandleDeck)
@@ -103,7 +100,7 @@ func main() {
 	mux.HandleFunc("GET /proxy/image", h.HandleImageProxy)
 
 	if authMgr != nil {
-		authH := handlers.NewAuthHandlers(authMgr, queries)
+		authH := handlers.NewAuthHandlers(authMgr, database)
 		mux.HandleFunc("GET /auth/login", authH.HandleLogin)
 		mux.HandleFunc("GET /auth/callback", authH.HandleCallback)
 		mux.HandleFunc("GET /auth/logout", authH.HandleLogout)

@@ -15,10 +15,11 @@ import (
 type AuthHandlers struct {
 	auth    *auth.Manager
 	queries *db.Queries
+	db      *sql.DB
 }
 
-func NewAuthHandlers(auth *auth.Manager, queries *db.Queries) *AuthHandlers {
-	return &AuthHandlers{auth: auth, queries: queries}
+func NewAuthHandlers(auth *auth.Manager, database *sql.DB) *AuthHandlers {
+	return &AuthHandlers{auth: auth, queries: db.New(database), db: database}
 }
 
 func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
