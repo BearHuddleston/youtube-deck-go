@@ -163,7 +163,10 @@ func (c *Client) FetchPlaylistVideosWithToken(ctx context.Context, playlistID st
 
 	videos := make([]VideoInfo, 0, len(videoResp.Items))
 	for _, v := range videoResp.Items {
-		publishedAt, _ := time.Parse(time.RFC3339, v.Snippet.PublishedAt)
+		publishedAt, err := time.Parse(time.RFC3339, v.Snippet.PublishedAt)
+		if err != nil {
+			publishedAt = time.Now()
+		}
 		videos = append(videos, VideoInfo{
 			ID:           v.Id,
 			Title:        v.Snippet.Title,
