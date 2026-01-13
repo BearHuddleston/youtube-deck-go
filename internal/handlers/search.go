@@ -16,6 +16,10 @@ func (h *Handlers) HandleSearchResults(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(""))
 		return
 	}
+	if len(query) > 500 {
+		http.Error(w, "query too long", http.StatusBadRequest)
+		return
+	}
 
 	searchType := r.URL.Query().Get("type")
 	if searchType == "" {
