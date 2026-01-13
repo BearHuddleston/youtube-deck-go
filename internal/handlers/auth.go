@@ -33,7 +33,7 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   r.TLS != nil,
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   300,
+		MaxAge:   900,
 	})
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
