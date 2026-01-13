@@ -140,6 +140,9 @@ func main() {
 	log.Println("Server stopped")
 }
 
+// isAlterTableDuplicate checks if an ALTER TABLE error is due to a duplicate column.
+// This uses string matching which is SQLite-specific. For production use with
+// multiple database backends, consider using a proper migration library.
 func isAlterTableDuplicate(err error) bool {
 	return err != nil && (contains(err.Error(), "duplicate column") || contains(err.Error(), "already exists"))
 }
