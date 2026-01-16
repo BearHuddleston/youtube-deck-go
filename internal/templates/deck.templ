@@ -8,10 +8,10 @@ func isActive(sub SubscriptionWithCount) bool {
 
 templ Deck(allSubs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, hasMore bool, nextOffset int64, isAuthenticated bool) {
 	@DeckLayout("Deck", isAuthenticated) {
-		<div class="flex h-full" x-data="{ sidebarOpen: true }">
+		<div class="flex h-full" x-data="{ sidebarOpen: true }" role="application" aria-label="YouTube Deck Interface">
 			@Sidebar(allSubs, activeSubs, hasMore, nextOffset)
-			<div class="flex-1 deck-scroll">
-				<div id="deck-columns" class="flex gap-4 p-4 h-full">
+			<div class="flex-1 deck-scroll" role="region" aria-label="Video columns">
+				<div id="deck-columns" class="deck flex gap-4 p-4 h-full">
 					for _, sub := range activeSubs {
 						@Column(sub)
 					}
@@ -26,31 +26,40 @@ templ Deck(allSubs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, 
 }
 
 templ DeckEmptyState() {
-	<div id="deck-empty-state" class="flex flex-col items-center justify-center flex-1 text-center p-8">
-		<div class="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-			<svg class="w-10 h-10 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<div id="deck-empty-state" class="empty-state flex flex-col items-center justify-center flex-1 text-center p-8 animate-fade-in-up" role="status">
+		<div class="empty-state__icon w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4 animate-pulse">
+			<svg class="w-10 h-10 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
 			</svg>
 		</div>
-		<h3 class="text-lg font-semibold text-zinc-200 mb-2">No columns yet</h3>
-		<p class="text-zinc-500 text-sm max-w-xs">
-			Click the + button on subscriptions in the sidebar to add them as columns.
+		<h2 class="empty-state__title text-lg font-semibold text-zinc-200 mb-2">No columns yet</h2>
+		<p class="empty-state__description text-zinc-500 text-sm max-w-xs mb-4">
+			Click the <span class="inline-flex items-center justify-center w-5 h-5 bg-zinc-700 rounded text-xs">+</span> button on subscriptions in the sidebar to add them as columns.
 		</p>
+		<div class="flex items-center gap-2 text-xs text-zinc-600">
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+			</svg>
+			<span>Tip: Drag columns to reorder them</span>
+		</div>
 	</div>
 }
 
 templ Sidebar(subs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, hasMore bool, nextOffset int64) {
 	<aside
-		class="bg-zinc-900 border-r border-zinc-800 sidebar-transition overflow-hidden flex flex-col"
+		class="sidebar bg-zinc-900 border-r border-zinc-800 sidebar-transition overflow-hidden flex flex-col"
 		:class="sidebarOpen ? 'w-64' : 'w-0'"
+		role="complementary"
+		aria-label="Subscriptions sidebar"
 	>
 		<div id="sidebar-content" class="flex-1 overflow-y-auto flex flex-col" x-show="sidebarOpen" x-cloak>
-			<div class="flex items-center justify-between p-3 border-b border-zinc-800">
-				<h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Subscriptions</h2>
+			<div class="sidebar__header flex items-center justify-between p-3 border-b border-zinc-800">
+				<h2 class="sidebar__title text-sm font-semibold text-zinc-400 uppercase tracking-wider">Subscriptions</h2>
 				<button
 					@click="sidebarOpen = false"
-					class="p-1 hover:bg-zinc-800 rounded transition-colors"
+					class="btn btn--ghost p-1.5 hover:bg-zinc-800 rounded-lg transition-all"
 					aria-label="Collapse sidebar"
+					title="Collapse sidebar"
 				>
 					<svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
@@ -60,33 +69,36 @@ templ Sidebar(subs []SubscriptionWithCount, activeSubs []SubscriptionWithCount, 
 			@ActiveColumnsSection(activeSubs)
 			<div class="p-2 border-b border-zinc-800">
 				<div class="relative">
-					<svg class="w-4 h-4 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-4 h-4 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
 					</svg>
 					<input
-						type="text"
+						type="search"
 						name="q"
 						placeholder="Filter subscriptions..."
 						hx-get="/subscriptions/filter"
 						hx-trigger="input changed delay:200ms, search"
 						hx-target="#sidebar-list"
-						class="w-full bg-zinc-800 text-zinc-200 text-sm rounded-lg pl-8 pr-3 py-1.5 border border-zinc-700 focus:border-zinc-600 focus:outline-none placeholder-zinc-500"
+						class="input input--with-icon w-full bg-zinc-800 text-zinc-200 text-sm rounded-lg pl-8 pr-3 py-2 border border-zinc-700 focus:border-red-500 focus:ring-1 focus:ring-red-500/20 focus:outline-none placeholder-zinc-500 transition-all"
+						aria-label="Filter subscriptions"
 					/>
 				</div>
 			</div>
-			<div id="sidebar-list" class="p-2 space-y-1 flex-1 overflow-y-auto">
+			<div id="sidebar-list" class="sidebar__content p-2 space-y-1 flex-1 overflow-y-auto" role="list" aria-label="Subscription list">
 				@SidebarList(subs, hasMore, nextOffset)
 			</div>
 		</div>
 	</aside>
+	<!-- Sidebar expand button -->
 	<button
 		x-show="!sidebarOpen"
 		x-cloak
 		@click="sidebarOpen = true"
-		class="fixed left-0 top-1/2 -translate-y-1/2 bg-zinc-800 hover:bg-zinc-700 p-2 rounded-r-lg border border-l-0 border-zinc-700 transition-colors z-30"
+		class="fixed left-0 top-1/2 -translate-y-1/2 bg-zinc-800 hover:bg-zinc-700 p-2 rounded-r-lg border border-l-0 border-zinc-700 transition-all z-30 hover:shadow-lg group"
 		aria-label="Expand sidebar"
+		title="Expand sidebar"
 	>
-		<svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+		<svg class="w-4 h-4 text-zinc-400 group-hover:text-zinc-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
 		</svg>
 	</button>
@@ -96,24 +108,26 @@ templ SidebarItem(sub SubscriptionWithCount) {
 	<div
 		id={ "sidebar-" + itoa(sub.ID) }
 		data-id={ itoa(sub.ID) }
-		class="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-800 cursor-grab group"
+		class="sidebar__item flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-800 cursor-grab group transition-all"
+		role="listitem"
+		aria-label={ sub.Name }
 	>
 		if sub.ThumbnailUrl.Valid {
-			<img src={ proxyURL(sub.ThumbnailUrl.String) } alt="" class="w-8 h-8 rounded-full object-cover flex-shrink-0"/>
+			<img src={ proxyURL(sub.ThumbnailUrl.String) } alt="" class="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-transparent group-hover:ring-zinc-600 transition-all"/>
 		} else {
-			<div class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0">
-				<svg class="w-4 h-4 text-zinc-500" fill="currentColor" viewBox="0 0 24 24">
+			<div class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0 ring-2 ring-transparent group-hover:ring-zinc-600 transition-all">
+				<svg class="w-4 h-4 text-zinc-500" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
 				</svg>
 			</div>
 		}
 		<div class="flex-1 min-w-0">
-			<div class="text-sm font-medium text-zinc-200 truncate">{ sub.Name }</div>
+			<div class="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{ sub.Name }</div>
 			<div class="text-xs text-zinc-500 capitalize">{ sub.Type }</div>
 		</div>
 		<span id={ "sidebar-count-" + itoa(sub.ID) }>
 			if sub.UnwatchedCount > 0 {
-				<span class="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium">
+				<span class="badge badge--primary bg-red-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium" aria-label={ itoa64(sub.UnwatchedCount) + " unwatched" }>
 					{ itoa64(sub.UnwatchedCount) }
 				</span>
 			}
@@ -123,10 +137,11 @@ templ SidebarItem(sub SubscriptionWithCount) {
 				hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=0" }
 				hx-target={ "#sidebar-" + itoa(sub.ID) }
 				hx-swap="outerHTML"
-				class="p-1 bg-emerald-600 hover:bg-emerald-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+				class="btn btn--icon p-1 bg-emerald-600 hover:bg-emerald-500 rounded opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
 				title="Remove from deck"
+				aria-label={ "Remove " + sub.Name + " from deck" }
 			>
-				<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
 				</svg>
 			</button>
@@ -135,10 +150,11 @@ templ SidebarItem(sub SubscriptionWithCount) {
 				hx-patch={ "/subscriptions/" + itoa(sub.ID) + "/active?active=1" }
 				hx-target="#deck-columns"
 				hx-swap="beforeend"
-				class="p-1 bg-zinc-700 hover:bg-zinc-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+				class="btn btn--icon p-1 bg-zinc-700 hover:bg-zinc-600 rounded opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
 				title="Add to deck"
+				aria-label={ "Add " + sub.Name + " to deck" }
 			>
-				<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
 				</svg>
 			</button>
