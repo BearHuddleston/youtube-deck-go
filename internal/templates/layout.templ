@@ -4,27 +4,82 @@ templ Head(title string) {
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<meta name="description" content="YouTube Deck - A modern, TweetDeck-style interface for managing YouTube subscriptions"/>
+		<meta name="theme-color" content="#09090b"/>
+		<meta name="color-scheme" content="dark light"/>
 		<title>{ title } | YouTube Deck</title>
+		<!-- Design System CSS -->
+		<link rel="stylesheet" href="/static/css/design-system.css"/>
+		<!-- External Dependencies -->
 		<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
-		<!-- Tailwind CDN is for development only and does not support SRI -->
 		<script src="https://cdn.tailwindcss.com"></script>
 		<script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" integrity="sha384-4lYa+D8VZ8Dv8KKSRqBrhbnrFPP0VPBoVNJD5KXwC4hjtj1YFnKj+K5KQhOWYVXj" crossorigin="anonymous"></script>
 		<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-n52I2tVKCZBrFRzP5zFSvEE6tsLJ+PSyBsLe8zN+HC8ll0YnVlNFLOqILCgqHN1M" crossorigin="anonymous"></script>
+		<!-- Application JavaScript -->
+		<script defer src="/static/js/app.js"></script>
+		<!-- Tailwind Configuration for Design System Integration -->
+		<script>
+			tailwind.config = {
+				darkMode: ['class', '[data-theme="dark"]'],
+				theme: {
+					extend: {
+						colors: {
+							brand: {
+								primary: 'var(--color-brand-primary)',
+								'primary-hover': 'var(--color-brand-primary-hover)',
+								secondary: 'var(--color-brand-secondary)',
+							},
+							surface: {
+								DEFAULT: 'var(--color-surface)',
+								hover: 'var(--color-surface-hover)',
+								active: 'var(--color-surface-active)',
+							}
+						},
+						animation: {
+							'fade-in': 'fadeIn 0.2s ease-out',
+							'fade-in-up': 'fadeInUp 0.2s ease-out',
+							'scale-in': 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+							'slide-in-right': 'slideInRight 0.2s ease-out',
+						}
+					}
+				}
+			}
+		</script>
 		<style>
+			/* HTMX Loading States */
 			.htmx-request .htmx-indicator { display: inline-flex !important; }
 			.htmx-indicator { display: none; }
+			.htmx-request.htmx-indicator { display: inline-flex !important; }
+
+			/* Spinner Animation */
 			@keyframes spin { to { transform: rotate(360deg); } }
 			.spinner { animation: spin 1s linear infinite; }
-			.htmx-request.htmx-indicator { display: inline-flex !important; }
+
+			/* Deck Layout */
 			.deck-scroll { overflow-x: auto; scroll-snap-type: x proximity; }
 			.deck-scroll::-webkit-scrollbar { height: 8px; }
-			.deck-scroll::-webkit-scrollbar-track { background: #27272a; border-radius: 4px; }
-			.deck-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 4px; }
-			.deck-scroll::-webkit-scrollbar-thumb:hover { background: #71717a; }
+			.deck-scroll::-webkit-scrollbar-track { background: var(--color-bg-tertiary, #27272a); border-radius: 4px; }
+			.deck-scroll::-webkit-scrollbar-thumb { background: var(--color-bg-elevated, #52525b); border-radius: 4px; }
+			.deck-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted, #71717a); }
 			.column { scroll-snap-align: start; }
+
+			/* Sidebar */
 			.sidebar-transition { transition: width 200ms ease-in-out; }
+
+			/* Sortable Drag & Drop */
 			.sortable-ghost { opacity: 0.4; }
-			.sortable-drag { opacity: 1; }
+			.sortable-drag { opacity: 1; box-shadow: var(--shadow-2xl); }
+			.sortable-chosen { background: var(--color-surface-active); }
+
+			/* Smooth Transitions */
+			.transition-transform { transition: transform 0.2s ease; }
+			.hover\:scale-105:hover { transform: scale(1.05); }
+
+			/* Focus Visible Styles */
+			:focus-visible {
+				outline: 2px solid var(--color-brand-primary, #ef4444);
+				outline-offset: 2px;
+			}
 		</style>
 	</head>
 }
@@ -35,219 +90,230 @@ templ Layout(title string) {
 
 templ LayoutWithAuth(title string, isAuthenticated bool) {
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="en" data-theme="dark">
 		@Head(title)
 		<body class="bg-zinc-950 text-zinc-100 min-h-screen" hx-indicator=".global-indicator">
-			<script>
-				document.body.addEventListener('htmx:configRequest', function(evt) {
-					var match = document.cookie.match(/csrf_token=([^;]+)/);
-					if (match) {
-						evt.detail.headers['X-CSRF-Token'] = match[1];
-					}
-				});
-			</script>
-			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40" role="navigation" aria-label="Main navigation">
+			<!-- Skip to main content link for accessibility -->
+			<a href="#main-content" class="skip-link sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:bg-red-600 focus:text-white focus:px-4 focus:py-2">
+				Skip to main content
+			</a>
+			<nav class="navbar bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-40" role="navigation" aria-label="Main navigation">
 				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div class="flex items-center justify-between h-16">
-						<a href="/" class="flex items-center gap-3">
-							<svg class="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+						<a href="/" class="flex items-center gap-3 group" aria-label="YouTube Deck Home">
+							<svg class="w-8 h-8 text-red-500 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 								<path d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.6c-1 .3-1.7 1.1-2 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 1.9.5 9.5.5 9.5.5s7.6 0 9.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.7zM9.5 15.5v-7l6.4 3.5-6.4 3.5z"/>
 							</svg>
 							<span class="text-xl font-bold bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">YouTube Deck</span>
 						</a>
 						<div class="flex items-center gap-3">
-							<div class="htmx-indicator global-indicator">
-								<svg class="w-5 h-5 text-red-500 spinner" fill="none" viewBox="0 0 24 24">
+							<!-- Global Loading Indicator -->
+							<div class="htmx-indicator global-indicator" aria-live="polite" aria-label="Loading">
+								<svg class="w-5 h-5 text-red-500 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
 									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
 								</svg>
 							</div>
+							<!-- Theme Toggle Button -->
+							<button
+								type="button"
+								class="theme-toggle w-10 h-10 flex items-center justify-center rounded-lg bg-transparent border border-zinc-700 hover:bg-zinc-800 hover:border-zinc-600 transition-all"
+								aria-label="Toggle color theme"
+								title="Toggle theme (Ctrl+Shift+T)"
+							>
+								<svg class="theme-toggle__icon theme-toggle__icon--sun w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+								</svg>
+								<svg class="theme-toggle__icon theme-toggle__icon--moon w-5 h-5 text-zinc-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+								</svg>
+							</button>
 							if isAuthenticated {
 								<button
 									hx-post="/import"
 									hx-target="#subscriptions"
 									hx-swap="innerHTML"
 									hx-indicator="#import-indicator"
-									class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+									class="btn btn--success inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-lg hover:shadow-emerald-600/20"
+									aria-label="Import YouTube subscriptions"
 								>
 									<span id="import-indicator" class="htmx-indicator">
-										<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+										<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
 											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
 										</svg>
 									</span>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
 									</svg>
-									Import
+									<span class="hidden sm:inline">Import</span>
 								</button>
 								<a
 									href="/auth/logout"
-									class="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+									class="btn btn--secondary inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-medium transition-all border border-zinc-700 hover:border-zinc-600"
+									aria-label="Log out of your account"
 								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
 									</svg>
-									Logout
+									<span class="hidden sm:inline">Logout</span>
 								</a>
 							} else {
 								<a
 									href="/auth/login"
-									class="inline-flex items-center gap-2 bg-white text-zinc-900 hover:bg-zinc-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+									class="btn inline-flex items-center gap-2 bg-white text-zinc-900 hover:bg-zinc-100 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-lg"
+									aria-label="Sign in with Google"
 								>
-									<svg class="w-4 h-4" viewBox="0 0 24 24">
+									<svg class="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
 										<path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
 										<path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
 										<path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
 										<path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
 									</svg>
-									Sign in with Google
+									<span class="hidden sm:inline">Sign in with Google</span>
+									<span class="sm:hidden">Sign in</span>
 								</a>
 							}
 							<button
 								hx-get="/search"
 								hx-target="#modal"
 								hx-swap="innerHTML"
-								class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+								class="btn btn--primary inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-lg hover:shadow-red-600/20"
+								aria-label="Add a new channel"
+								title="Add Channel (Ctrl+K)"
 							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
 								</svg>
-								Add Channel
+								<span class="hidden sm:inline">Add Channel</span>
+								<span class="sm:hidden">Add</span>
 							</button>
 						</div>
 					</div>
 				</div>
 			</nav>
-			<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+			<main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in" role="main">
 				{ children... }
 			</main>
-			<div id="modal"></div>
-			<div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-zinc-800 text-white px-6 py-4 rounded-xl shadow-2xl border border-zinc-700 flex items-center gap-3 z-50">
-				<svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<div id="modal" role="dialog" aria-modal="true"></div>
+			<!-- Toast Notification -->
+			<div id="toast" class="toast fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-zinc-800 text-white px-6 py-4 rounded-xl shadow-2xl border border-zinc-700 flex items-center gap-3 z-50" role="status" aria-live="polite">
+				<svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
 				</svg>
 				<span id="toast-message"></span>
 			</div>
-			<script>
-				(function() {
-					if (window._toastListenerAdded) return;
-					window._toastListenerAdded = true;
-					document.body.addEventListener('showToast', function(e) {
-						const toast = document.getElementById('toast');
-						const message = document.getElementById('toast-message');
-						message.textContent = e.detail.value;
-						toast.classList.remove('translate-y-20', 'opacity-0');
-						setTimeout(() => {
-							toast.classList.add('translate-y-20', 'opacity-0');
-						}, 4000);
-					});
-				})();
-			</script>
 		</body>
 	</html>
 }
 
 templ DeckLayout(title string, isAuthenticated bool) {
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="en" data-theme="dark">
 		@Head(title)
 		<body class="bg-zinc-950 text-zinc-100 h-screen overflow-hidden" hx-indicator=".global-indicator">
-			<script>
-				document.body.addEventListener('htmx:configRequest', function(evt) {
-					var match = document.cookie.match(/csrf_token=([^;]+)/);
-					if (match) {
-						evt.detail.headers['X-CSRF-Token'] = match[1];
-					}
-				});
-			</script>
-			<nav class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 h-14" role="navigation" aria-label="Main navigation">
+			<!-- Skip to main content link for accessibility -->
+			<a href="#deck-content" class="skip-link sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:bg-red-600 focus:text-white focus:px-4 focus:py-2">
+				Skip to deck content
+			</a>
+			<nav class="navbar bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-40 h-14" role="navigation" aria-label="Deck navigation">
 				<div class="px-4 h-full">
 					<div class="flex items-center justify-between h-full">
-						<a href="/" class="flex items-center gap-3">
-							<svg class="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+						<a href="/" class="flex items-center gap-3 group" aria-label="YouTube Deck Home">
+							<svg class="w-8 h-8 text-red-500 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 								<path d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.6 3.5 12 3.5 12 3.5s-7.6 0-9.5.6c-1 .3-1.7 1.1-2 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1 1 1.8 2 2.1 1.9.5 9.5.5 9.5.5s7.6 0 9.5-.6c1-.3 1.7-1.1 2-2.1.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.7zM9.5 15.5v-7l6.4 3.5-6.4 3.5z"/>
 							</svg>
 							<span class="text-xl font-bold bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">YouTube Deck</span>
 						</a>
 						<div class="flex items-center gap-3">
-							<div class="htmx-indicator global-indicator">
-								<svg class="w-5 h-5 text-red-500 spinner" fill="none" viewBox="0 0 24 24">
+							<!-- Global Loading Indicator -->
+							<div class="htmx-indicator global-indicator" aria-live="polite" aria-label="Loading">
+								<svg class="w-5 h-5 text-red-500 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
 									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
 								</svg>
 							</div>
+							<!-- Theme Toggle Button -->
+							<button
+								type="button"
+								class="theme-toggle w-9 h-9 flex items-center justify-center rounded-lg bg-transparent border border-zinc-700 hover:bg-zinc-800 hover:border-zinc-600 transition-all"
+								aria-label="Toggle color theme"
+								title="Toggle theme"
+							>
+								<svg class="theme-toggle__icon theme-toggle__icon--sun w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+								</svg>
+								<svg class="theme-toggle__icon theme-toggle__icon--moon w-4 h-4 text-zinc-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+								</svg>
+							</button>
 							if isAuthenticated {
 								<button
 									hx-post="/import"
 									hx-target="#sidebar-list"
 									hx-swap="innerHTML"
 									hx-indicator="#import-indicator"
-									class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+									class="btn btn--success inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:shadow-lg hover:shadow-emerald-600/20"
+									aria-label="Import YouTube subscriptions"
 								>
 									<span id="import-indicator" class="htmx-indicator">
-										<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+										<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
 											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
 										</svg>
 									</span>
-									Import
+									<span>Import</span>
 								</button>
-								<a href="/auth/logout" class="text-zinc-400 hover:text-zinc-200 text-sm">Logout</a>
+								<a
+									href="/auth/logout"
+									class="text-zinc-400 hover:text-zinc-200 text-sm transition-colors px-2 py-1 rounded hover:bg-zinc-800"
+									aria-label="Log out"
+								>
+									Logout
+								</a>
 							} else {
 								<a
 									href="/auth/login"
-									class="inline-flex items-center gap-2 bg-white text-zinc-900 hover:bg-zinc-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+									class="btn inline-flex items-center gap-2 bg-white text-zinc-900 hover:bg-zinc-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:shadow-lg"
+									aria-label="Sign in with Google"
 								>
-									<svg class="w-4 h-4" viewBox="0 0 24 24">
+									<svg class="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
 										<path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
 										<path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
 										<path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
 										<path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
 									</svg>
-									Sign in
+									<span>Sign in</span>
 								</a>
 							}
 							<button
 								hx-get="/search"
 								hx-target="#modal"
 								hx-swap="innerHTML"
-								class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+								class="btn btn--primary inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:shadow-lg hover:shadow-red-600/20"
+								aria-label="Add a new channel"
+								title="Add Channel (Ctrl+K)"
 							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
 								</svg>
-								Add
+								<span>Add</span>
 							</button>
 						</div>
 					</div>
 				</div>
 			</nav>
-			<main class="h-[calc(100vh-3.5rem)]">
+			<main id="deck-content" class="h-[calc(100vh-3.5rem)]" role="main">
 				{ children... }
 			</main>
-			<div id="modal"></div>
-			<div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-zinc-800 text-white px-6 py-4 rounded-xl shadow-2xl border border-zinc-700 flex items-center gap-3 z-50">
-				<svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<div id="modal" role="dialog" aria-modal="true"></div>
+			<!-- Toast Notification -->
+			<div id="toast" class="toast fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-zinc-800 text-white px-6 py-4 rounded-xl shadow-2xl border border-zinc-700 flex items-center gap-3 z-50" role="status" aria-live="polite">
+				<svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
 				</svg>
 				<span id="toast-message"></span>
 			</div>
-			<script>
-				(function() {
-					if (window._toastListenerAdded) return;
-					window._toastListenerAdded = true;
-					document.body.addEventListener('showToast', function(e) {
-						const toast = document.getElementById('toast');
-						const message = document.getElementById('toast-message');
-						message.textContent = e.detail.value;
-						toast.classList.remove('translate-y-20', 'opacity-0');
-						setTimeout(() => {
-							toast.classList.add('translate-y-20', 'opacity-0');
-						}, 4000);
-					});
-				})();
-			</script>
 		</body>
 	</html>
 }

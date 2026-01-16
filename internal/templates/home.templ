@@ -14,7 +14,40 @@ type SubscriptionWithCount struct {
 
 templ Home(subscriptions []SubscriptionWithCount, isAuthenticated bool) {
 	@LayoutWithAuth("Dashboard", isAuthenticated) {
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="subscriptions">
+		<!-- Dashboard Header -->
+		<header class="mb-8">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div>
+					<h1 class="text-2xl sm:text-3xl font-bold text-zinc-100">Your Subscriptions</h1>
+					<p class="text-zinc-500 mt-1">
+						if len(subscriptions) > 0 {
+							{ itoa(int64(len(subscriptions))) } channels tracked
+						} else {
+							Get started by adding channels
+						}
+					</p>
+				</div>
+				<div class="flex items-center gap-3">
+					<a
+						href="/deck"
+						class="btn inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-medium transition-all border border-zinc-700 hover:border-zinc-600"
+						aria-label="Open Deck View"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+						</svg>
+						<span>Open Deck View</span>
+					</a>
+				</div>
+			</div>
+		</header>
+		<!-- Subscription Grid with staggered animation -->
+		<div
+			class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger-animation"
+			id="subscriptions"
+			role="list"
+			aria-label="Subscription channels"
+		>
 			for _, sub := range subscriptions {
 				@SubscriptionCard(sub)
 			}
@@ -26,93 +59,142 @@ templ Home(subscriptions []SubscriptionWithCount, isAuthenticated bool) {
 }
 
 templ EmptyState() {
-	<div class="col-span-full flex flex-col items-center justify-center py-20">
-		<div class="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center mb-6">
-			<svg class="w-12 h-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<div class="empty-state col-span-full flex flex-col items-center justify-center py-20 animate-fade-in-up" role="status">
+		<div class="empty-state__icon w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center mb-6 animate-pulse">
+			<svg class="w-12 h-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
 			</svg>
 		</div>
-		<h3 class="text-xl font-semibold text-zinc-200 mb-2">No subscriptions yet</h3>
-		<p class="text-zinc-500 text-center max-w-sm mb-6">
+		<h2 class="empty-state__title text-xl font-semibold text-zinc-200 mb-2">No subscriptions yet</h2>
+		<p class="empty-state__description text-zinc-500 text-center max-w-sm mb-6">
 			Get started by importing your YouTube subscriptions or adding channels manually.
 		</p>
-		<div class="flex gap-3">
+		<div class="flex flex-col sm:flex-row gap-3">
 			<button
 				hx-get="/search"
 				hx-target="#modal"
 				hx-swap="innerHTML"
-				class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-lg font-medium transition-colors"
+				class="btn btn--primary inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-red-600/20 hover:-translate-y-0.5"
+				aria-label="Add a new channel"
 			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
 				</svg>
 				Add Channel
 			</button>
+			<a
+				href="/deck"
+				class="btn btn--secondary inline-flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-5 py-2.5 rounded-lg font-medium transition-all border border-zinc-700 hover:border-zinc-600"
+				aria-label="Go to Deck View"
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+				</svg>
+				Open Deck View
+			</a>
 		</div>
 	</div>
 }
 
 templ SubscriptionCard(sub SubscriptionWithCount) {
-	<div
+	<article
 		id={ "sub-" + itoa(sub.ID) }
-		class="group bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 hover:border-zinc-700 transition-all hover:shadow-xl hover:shadow-black/20"
+		class="subscription-card group bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 hover:border-zinc-700 transition-all duration-300 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1"
+		role="listitem"
+		aria-label={ sub.Name + " subscription" }
 	>
-		<a href={ templ.SafeURL("/subscriptions/" + itoa(sub.ID) + "/videos") } class="block relative flex justify-center bg-zinc-800 p-4">
+		<a
+			href={ templ.SafeURL("/subscriptions/" + itoa(sub.ID) + "/videos") }
+			class="subscription-card__image block relative flex justify-center bg-zinc-800 p-4"
+			aria-label={ "View videos from " + sub.Name }
+		>
 			if sub.ThumbnailUrl.Valid {
-				<img src={ proxyURL(sub.ThumbnailUrl.String) } alt={ sub.Name } loading="lazy" class="w-[240px] h-[240px] object-cover rounded-full group-hover:scale-105 transition-transform duration-300"/>
+				<img
+					src={ proxyURL(sub.ThumbnailUrl.String) }
+					alt=""
+					loading="lazy"
+					class="subscription-card__avatar w-[200px] h-[200px] sm:w-[180px] sm:h-[180px] object-cover rounded-full group-hover:scale-105 transition-transform duration-300 ring-4 ring-zinc-700/50 group-hover:ring-red-500/30"
+				/>
 			} else {
-				<div class="w-[240px] h-[240px] rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center">
-					<svg class="w-16 h-16 text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
+				<div class="subscription-card__avatar w-[200px] h-[200px] sm:w-[180px] sm:h-[180px] rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center ring-4 ring-zinc-700/50">
+					<svg class="w-16 h-16 text-zinc-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
 					</svg>
 				</div>
 			}
 			if sub.UnwatchedCount > 0 {
-				<div class="absolute top-3 right-3">
-					<span class="bg-red-600 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg">
+				<div class="subscription-card__badge absolute top-3 right-3">
+					<span
+						class="badge badge--primary bg-red-600 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse"
+						aria-label={ itoa64(sub.UnwatchedCount) + " unwatched videos" }
+					>
 						{ itoa64(sub.UnwatchedCount) }
 					</span>
 				</div>
 			}
+			<!-- Hover overlay -->
+			<div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
+				<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+					<svg class="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M8 5v14l11-7z"/>
+					</svg>
+				</div>
+			</div>
 		</a>
-		<div class="p-4">
-			<a href={ templ.SafeURL("/subscriptions/" + itoa(sub.ID) + "/videos") } class="block">
-				<h3 class="font-semibold text-zinc-100 truncate group-hover:text-red-400 transition-colors">{ sub.Name }</h3>
-				<p class="text-sm text-zinc-500 mt-1 capitalize">{ sub.Type }</p>
+		<div class="subscription-card__content p-4">
+			<a href={ templ.SafeURL("/subscriptions/" + itoa(sub.ID) + "/videos") } class="block group/link">
+				<h3 class="subscription-card__name font-semibold text-zinc-100 truncate group-hover/link:text-red-400 transition-colors">
+					{ sub.Name }
+				</h3>
+				<p class="subscription-card__type text-sm text-zinc-500 mt-1 capitalize flex items-center gap-1">
+					if sub.Type == "channel" {
+						<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+						</svg>
+					} else {
+						<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/>
+						</svg>
+					}
+					{ sub.Type }
+				</p>
 			</a>
-			<div class="flex gap-2 mt-4">
+			<div class="subscription-card__actions flex gap-2 mt-4">
 				<button
 					hx-post={ "/subscriptions/" + itoa(sub.ID) + "/refresh" }
 					hx-target={ "#sub-" + itoa(sub.ID) }
 					hx-swap="outerHTML"
 					hx-indicator={ "#refresh-" + itoa(sub.ID) }
-					class="flex-1 inline-flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+					class="btn btn--secondary flex-1 inline-flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm font-medium transition-all border border-zinc-700 hover:border-zinc-600"
+					aria-label={ "Refresh videos from " + sub.Name }
 				>
 					<span id={ "refresh-" + itoa(sub.ID) } class="htmx-indicator">
-						<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+						<svg class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24" aria-hidden="true">
 							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z"></path>
 						</svg>
 					</span>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
 					</svg>
-					Refresh
+					<span>Refresh</span>
 				</button>
 				<button
 					hx-delete={ "/subscriptions/" + itoa(sub.ID) }
 					hx-target={ "#sub-" + itoa(sub.ID) }
 					hx-swap="delete"
 					hx-confirm="Delete this subscription?"
-					class="inline-flex items-center justify-center bg-zinc-800 hover:bg-red-600 w-10 rounded-lg transition-colors border border-zinc-700 hover:border-red-600"
+					class="btn btn--icon inline-flex items-center justify-center bg-zinc-800 hover:bg-red-600 w-10 rounded-lg transition-all border border-zinc-700 hover:border-red-600 hover:shadow-lg hover:shadow-red-600/20"
+					aria-label={ "Delete " + sub.Name + " subscription" }
+					title="Delete subscription"
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
 					</svg>
 				</button>
 			</div>
 		</div>
-	</div>
+	</article>
 }
 
 func itoa(n int64) string {

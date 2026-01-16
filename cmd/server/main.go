@@ -84,6 +84,11 @@ func main() {
 	h := handlers.New(database, ytClient, authMgr, logger)
 
 	mux := http.NewServeMux()
+
+	// Serve static files (CSS, JS, images)
+	staticFS := http.FileServer(http.Dir("static"))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", staticFS))
+
 	mux.HandleFunc("GET /{$}", h.HandleDeck)
 	mux.HandleFunc("GET /search", h.HandleSearch)
 	mux.HandleFunc("GET /search/results", h.HandleSearchResults)
